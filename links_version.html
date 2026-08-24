@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meter Route Links</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --panel: #ffffff; --ink: #1c2733; --muted: #5b6b7b;
+    --accent: #0b6bcb; --line: #dde4ea; --ok: #1a7f37; --err: #b42318; --meter: #7a5af8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 16px; }
+  header h1 { font-size: 17px; margin: 0 0 2px; font-weight: 600; }
+  header .sub { font-size: 12.5px; color: var(--muted); }
+  main { max-width: 760px; margin: 0 auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  textarea { width: 100%; min-height: 170px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 13px/1.5 Consolas, monospace; }
+  textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .hint { font-size: 12.5px; color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button { border: 0; border-radius: 8px; padding: 11px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  #genBtn { background: var(--accent); color: #fff; flex: 1; min-width: 140px; }
+  #clearBtn { background: #e8edf2; color: var(--ink); }
+  #status { font-size: 13px; min-height: 18px; }
+  #status.err { color: var(--err); } #status.ok { color: var(--ok); }
+  #legs { display: flex; flex-direction: column; gap: 8px; }
+  a.leg { display: block; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: 8px; padding: 12px 14px; text-decoration: none; color: var(--ink); }
+  a.leg:active { background: #eef4fb; }
+  a.leg .t { font-weight: 700; font-size: 14.5px; color: var(--accent); }
+  a.leg .d { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  #stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #stops li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; display: flex; gap: 10px; align-items: center; }
+  #stops li.bad { border-color: var(--err); background: #fef3f2; }
+  .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  li.bad .n { background: var(--err); }
+  .info { flex: 1; min-width: 0; }
+  .info .a { font-size: 13.5px; font-weight: 600; }
+  .info .m { font-size: 12px; color: var(--meter); font-weight: 700; font-family: Consolas, monospace; margin-top: 1px; }
+  .info .warn { font-size: 12px; color: var(--err); }
+  a.pin { flex: none; font-size: 12.5px; font-weight: 600; color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  h2 { font-size: 13.5px; margin: 6px 0 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Meter Route Links</h1>
+  <span class="sub">Paste your round &rarr; Google Maps walking links, in your order</span>
+</header>
+<main>
+  <textarea id="input" placeholder="Paste address + meter pairs, e.g.:&#10;&#10;10 BARBARA STHADFIELD3046&#10;MAF135894&#10;12B BARBARA STHADFIELD3046&#10;YATD167047"></textarea>
+  <div class="hint">Format: address line (postcode glued on the end), then the meter number on the next line. Order is kept exactly as pasted.</div>
+  <div class="row">
+    <button id="genBtn">Generate links</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+  <div id="status"></div>
+  <div id="legs"></div>
+  <h2 id="stopsHead" hidden>Stops</h2>
+  <ol id="stops"></ol>
+</main>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+function setStatus(msg, cls) { $("status").textContent = msg; $("status").className = cls || ""; }
+
+// Street type abbreviations, longest first so e.g. CRES wins over CR
+const STREET_TYPES = [
+  "BOULEVARD","ESPLANADE","PARKWAY","CIRCUIT","CRESCENT","GARDENS","HIGHWAY","PROMENADE","TERRACE",
+  "AVENUE","ARCADE","CLOSE","COURT","DRIVE","GRANGE","GROVE","PLACE","SQUARE","STREET","RETREAT",
+  "ALLEY","BVD","BLVD","CRES","CIRC","GDNS","GRN","HTS","MEWS","PROM","RIDGE","RISE","VIEW","VISTA","WALK","WYND",
+  "ALY","APP","AVE","BND","CCT","CIR","CL","CR","CRT","CT","DR","ENT","ESP","EXP","FWY","GLN","GR","GRA","GRV",
+  "HWY","LANE","LNK","LOOP","LA","LN","MALL","PARK","PASS","PDE","PKWY","PL","PT","QY","RD","ROW","SQ","ST",
+  "TCE","TRK","TRL","WAY","WK","WKWY"
+].sort((a, b) => b.length - a.length);
+
+function stateFromPostcode(pc) {
+  const n = +pc;
+  if ((n >= 2600 && n <= 2618) || (n >= 2900 && n <= 2920)) return "ACT";
+  if (n >= 2000 && n <= 2999) return "NSW";
+  if ((n >= 3000 && n <= 3999) || (n >= 8000 && n <= 8999)) return "VIC";
+  if ((n >= 4000 && n <= 4999) || (n >= 9000 && n <= 9999)) return "QLD";
+  if (n >= 5000 && n <= 5999) return "SA";
+  if (n >= 6000 && n <= 6999) return "WA";
+  if (n >= 7000 && n <= 7999) return "TAS";
+  if (n >= 800 && n <= 999) return "NT";
+  return "";
+}
+
+// "10 BARBARA STHADFIELD3046" -> "10 BARBARA ST, HADFIELD VIC 3046"
+function parseAddressLine(line) {
+  const m = line.match(/^(.*?)(\d{4})$/);
+  if (!m) return null;
+  const postcode = m[2];
+  let body = m[1].trim();
+
+  // Find a street type glued to the suburb: TYPE immediately followed by more letters,
+  // scanning words from the end (street type is normally in the last glued word).
+  const words = body.split(/\s+/);
+  let street = body, suburb = "";
+  outer:
+  for (let w = words.length - 1; w > 0; w--) {
+    const word = words[w];
+    for (const t of STREET_TYPES) {
+      if (word.startsWith(t) && word.length > t.length && /^[A-Z]+$/i.test(word.slice(t.length))) {
+        suburb = word.slice(t.length) + (w < words.length - 1 ? " " + words.slice(w + 1).join(" ") : "");
+        street = words.slice(0, w).join(" ") + " " + t;
+        break outer;
+      }
+      // already separated: "... ST HADFIELD3046" (type is its own word)
+      if (word === t && w < words.length - 1) {
+        suburb = words.slice(w + 1).join(" ");
+        street = words.slice(0, w + 1).join(" ");
+        break outer;
+      }
+    }
+  }
+  const state = stateFromPostcode(postcode);
+  return {
+    raw: line,
+    pretty: street + (suburb ? ", " + suburb : "") + (state ? " " + state : "") + " " + postcode,
+    query: street + " " + (suburb ? suburb + " " : "") + (state ? state + " " : "") + postcode,
+    split: !!suburb
+  };
+}
+
+const METER_RE = /^[A-Z]{2,6}\d{4,}[A-Z0-9]*$/i;
+const ADDR_RE = /^\d+[A-Z]?(\/|\s).*\d{4}$/i;
+
+// Lines alternate address / meter, but tolerate missing meters or stray lines
+function parseInput(text) {
+  const lines = text.split(/\r?\n/).map(s => s.trim().replace(/\s+/g, " ")).filter(Boolean);
+  const stops = [], unrecognised = [];
+  for (const line of lines) {
+    if (ADDR_RE.test(line)) {
+      const a = parseAddressLine(line);
+      if (a) { stops.push({ ...a, meter: "" }); continue; }
+    }
+    if (METER_RE.test(line) && stops.length && !stops[stops.length - 1].meter) {
+      stops[stops.length - 1].meter = line.toUpperCase();
+    } else {
+      unrecognised.push(line);
+    }
+  }
+  return { stops, unrecognised };
+}
+
+// Google Maps walking directions: origin + up to 9 waypoints + destination = 11 stops/leg.
+// Legs chain: each starts where the previous ended.
+const LEG_SIZE = 11;
+
+function dirLink(stops) {
+  const qs = stops.map(s => encodeURIComponent(s.query));
+  return "https://www.google.com/maps/dir/?api=1&travelmode=walking" +
+    "&origin=" + qs[0] +
+    "&destination=" + qs[qs.length - 1] +
+    (qs.length > 2 ? "&waypoints=" + qs.slice(1, -1).join("%7C") : "");
+}
+
+function pinLink(stop) {
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(stop.query);
+}
+
+function generate() {
+  const { stops, unrecognised } = parseInput($("input").value);
+  const legsEl = $("legs"), stopsEl = $("stops");
+  legsEl.innerHTML = ""; stopsEl.innerHTML = "";
+  $("stopsHead").hidden = true;
+  if (!stops.length) { setStatus("No addresses recognised — check the paste format.", "err"); return; }
+
+  // Leg links
+  for (let i = 0, leg = 1; i < stops.length - 1; i += LEG_SIZE - 1, leg++) {
+    const slice = stops.slice(i, i + LEG_SIZE);
+    if (slice.length < 2) break;
+    const a = document.createElement("a");
+    a.className = "leg";
+    a.href = dirLink(slice);
+    a.target = "_blank"; a.rel = "noopener";
+    const from = i + 1, to = i + slice.length;
+    a.innerHTML = '<div class="t"></div><div class="d"></div>';
+    a.querySelector(".t").textContent = "Leg " + leg + " — stops " + from + " to " + to;
+    a.querySelector(".d").textContent = slice[0].pretty + "  →  " + slice[slice.length - 1].pretty;
+    legsEl.appendChild(a);
+  }
+  if (stops.length === 1) {
+    const a = document.createElement("a");
+    a.className = "leg"; a.href = pinLink(stops[0]); a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "Open " + stops[0].pretty;
+    legsEl.appendChild(a);
+  }
+
+  // Stop list with meter numbers + per-stop pin links
+  $("stopsHead").hidden = false;
+  stops.forEach((s, i) => {
+    const li = document.createElement("li");
+    if (!s.split) li.className = "bad";
+    li.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="info"><div class="a"></div>' +
+      (s.meter ? '<div class="m"></div>' : '<div class="warn">No meter number found</div>') +
+      (!s.split ? '<div class="warn">Could not split suburb — check this one</div>' : "") +
+      '</span><a class="pin" target="_blank" rel="noopener">Map</a>';
+    li.querySelector(".a").textContent = s.pretty;
+    if (s.meter) li.querySelector(".m").textContent = "Meter " + s.meter;
+    li.querySelector(".pin").href = pinLink(s);
+    stopsEl.appendChild(li);
+  });
+
+  const nLegs = legsEl.children.length;
+  setStatus(stops.length + " stops → " + nLegs + " walking leg" + (nLegs === 1 ? "" : "s") +
+    (unrecognised.length ? " · " + unrecognised.length + " line(s) not recognised" : ""),
+    unrecognised.length ? "err" : "ok");
+}
+
+$("genBtn").addEventListener("click", generate);
+$("clearBtn").addEventListener("click", () => {
+  $("input").value = ""; $("legs").innerHTML = ""; $("stops").innerHTML = "";
+  $("stopsHead").hidden = true; setStatus("");
+});
+</script>
+</body>
+</html>

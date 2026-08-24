@@ -3,70 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meter Route Links</title>
+<title>Meter Route Planner (Google)</title>
 <style>
   :root {
     --bg: #f4f6f8; --panel: #ffffff; --ink: #1c2733; --muted: #5b6b7b;
     --accent: #0b6bcb; --line: #dde4ea; --ok: #1a7f37; --err: #b42318; --meter: #7a5af8;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
-  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 16px; }
-  header h1 { font-size: 17px; margin: 0 0 2px; font-weight: 600; }
-  header .sub { font-size: 12.5px; color: var(--muted); }
-  main { max-width: 760px; margin: 0 auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-  textarea { width: 100%; min-height: 170px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 13px/1.5 Consolas, monospace; }
-  textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
-  .hint { font-size: 12.5px; color: var(--muted); }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  button { border: 0; border-radius: 8px; padding: 11px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
-  #genBtn { background: var(--accent); color: #fff; flex: 1; min-width: 140px; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #sidebar { width: 380px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-y: auto; }
+  textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: 13px/1.5 Consolas, monospace; }
+  textarea:focus, input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  input[type=text], input[type=password] { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 13px; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { border: 0; border-radius: 6px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #planBtn { background: var(--accent); color: #fff; flex: 1; }
+  #planBtn:disabled { opacity: .55; cursor: wait; }
   #clearBtn { background: #e8edf2; color: var(--ink); }
-  #status { font-size: 13px; min-height: 18px; }
+  label.opt { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  #status { font-size: 12.5px; min-height: 18px; }
   #status.err { color: var(--err); } #status.ok { color: var(--ok); }
-  #legs { display: flex; flex-direction: column; gap: 8px; }
-  a.leg { display: block; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: 8px; padding: 12px 14px; text-decoration: none; color: var(--ink); }
-  a.leg:active { background: #eef4fb; }
-  a.leg .t { font-weight: 700; font-size: 14.5px; color: var(--accent); }
-  a.leg .d { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
   #stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  #stops li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; display: flex; gap: 10px; align-items: center; }
-  #stops li.bad { border-color: var(--err); background: #fef3f2; }
-  .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  li.bad .n { background: var(--err); }
-  .info { flex: 1; min-width: 0; }
-  .info .a { font-size: 13.5px; font-weight: 600; }
-  .info .m { font-size: 12px; color: var(--meter); font-weight: 700; font-family: Consolas, monospace; margin-top: 1px; }
-  .info .warn { font-size: 12px; color: var(--err); }
-  a.pin { flex: none; font-size: 12.5px; font-weight: 600; color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
-  h2 { font-size: 13.5px; margin: 6px 0 0; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #stops li { display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; cursor: pointer; }
+  #stops li:hover { border-color: var(--accent); }
+  #stops li.failed { border-color: var(--err); background: #fef3f2; cursor: default; }
+  .badge { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  li.failed .badge { background: var(--err); }
+  .addr .orig { font-weight: 600; }
+  .addr .meter { color: var(--meter); font-weight: 700; font-family: Consolas, monospace; font-size: 11.5px; }
+  .addr .match { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  #summary { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+  #map { flex: 1; }
+  #keyPanel { background: #fff8e6; border: 1px solid #f0d47a; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  #keyPanel.hidden { display: none; }
+  @media (max-width: 760px) { main { flex-direction: column; } #sidebar { width: 100%; max-height: 48vh; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Meter Route Links</h1>
-  <span class="sub">Paste your round &rarr; Google Maps walking links, in your order</span>
-</header>
+<header><h1>Meter Route Planner <span style="color:var(--muted);font-weight:400">— Google Maps</span></h1></header>
 <main>
-  <textarea id="input" placeholder="Paste address + meter pairs, e.g.:&#10;&#10;10 BARBARA STHADFIELD3046&#10;MAF135894&#10;12B BARBARA STHADFIELD3046&#10;YATD167047"></textarea>
-  <div class="hint">Format: address line (postcode glued on the end), then the meter number on the next line. Order is kept exactly as pasted.</div>
-  <div class="row">
-    <button id="genBtn">Generate links</button>
-    <button id="clearBtn">Clear</button>
+  <div id="sidebar">
+    <div id="keyPanel">
+      <div class="hint"><b>Google Maps API key required.</b> Paste it here — it is stored only in this browser.</div>
+      <input type="password" id="apiKey" placeholder="AIza...">
+      <div class="row"><button id="keyBtn" style="background:var(--accent);color:#fff">Load Google Maps</button></div>
+    </div>
+    <textarea id="input" placeholder="Paste address + meter pairs:&#10;&#10;10 BARBARA STHADFIELD3046&#10;MAF135894&#10;12B BARBARA STHADFIELD3046&#10;YATD167047"></textarea>
+    <div class="hint">Order is kept exactly as pasted. Meter number on the line after each address.</div>
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="roundTrip" checked> Return to first stop (loop)</label>
+      <label class="opt"><input type="checkbox" id="showToilets" checked> Public toilets</label>
+    </div>
+    <div class="row">
+      <button id="planBtn" disabled>Plan route</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+    <div id="status"></div>
+    <ol id="stops"></ol>
+    <div id="summary"></div>
   </div>
-  <div id="status"></div>
-  <div id="legs"></div>
-  <h2 id="stopsHead" hidden>Stops</h2>
-  <ol id="stops"></ol>
+  <div id="map"></div>
 </main>
 
 <script>
 "use strict";
-
 const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 function setStatus(msg, cls) { $("status").textContent = msg; $("status").className = cls || ""; }
 
-// Street type abbreviations, longest first so e.g. CRES wins over CR
+// ---------- storage helpers (fail-soft where storage is unavailable) ----------
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+// ---------- paste parsing (same format as the link version) ----------
 const STREET_TYPES = [
   "BOULEVARD","ESPLANADE","PARKWAY","CIRCUIT","CRESCENT","GARDENS","HIGHWAY","PROMENADE","TERRACE",
   "AVENUE","ARCADE","CLOSE","COURT","DRIVE","GRANGE","GROVE","PLACE","SQUARE","STREET","RETREAT",
@@ -89,15 +102,11 @@ function stateFromPostcode(pc) {
   return "";
 }
 
-// "10 BARBARA STHADFIELD3046" -> "10 BARBARA ST, HADFIELD VIC 3046"
 function parseAddressLine(line) {
   const m = line.match(/^(.*?)(\d{4})$/);
   if (!m) return null;
   const postcode = m[2];
-  let body = m[1].trim();
-
-  // Find a street type glued to the suburb: TYPE immediately followed by more letters,
-  // scanning words from the end (street type is normally in the last glued word).
+  const body = m[1].trim();
   const words = body.split(/\s+/);
   let street = body, suburb = "";
   outer:
@@ -109,7 +118,6 @@ function parseAddressLine(line) {
         street = words.slice(0, w).join(" ") + " " + t;
         break outer;
       }
-      // already separated: "... ST HADFIELD3046" (type is its own word)
       if (word === t && w < words.length - 1) {
         suburb = words.slice(w + 1).join(" ");
         street = words.slice(0, w + 1).join(" ");
@@ -121,7 +129,7 @@ function parseAddressLine(line) {
   return {
     raw: line,
     pretty: street + (suburb ? ", " + suburb : "") + (state ? " " + state : "") + " " + postcode,
-    query: street + " " + (suburb ? suburb + " " : "") + (state ? state + " " : "") + postcode,
+    query: street + (suburb ? ", " + suburb : "") + (state ? " " + state : "") + " " + postcode + ", Australia",
     split: !!suburb
   };
 }
@@ -129,7 +137,6 @@ function parseAddressLine(line) {
 const METER_RE = /^[A-Z]{2,6}\d{4,}[A-Z0-9]*$/i;
 const ADDR_RE = /^\d+[A-Z]?(\/|\s).*\d{4}$/i;
 
-// Lines alternate address / meter, but tolerate missing meters or stray lines
 function parseInput(text) {
   const lines = text.split(/\r?\n/).map(s => s.trim().replace(/\s+/g, " ")).filter(Boolean);
   const stops = [], unrecognised = [];
@@ -147,75 +154,292 @@ function parseInput(text) {
   return { stops, unrecognised };
 }
 
-// Google Maps walking directions: origin + up to 9 waypoints + destination = 11 stops/leg.
-// Legs chain: each starts where the previous ended.
-const LEG_SIZE = 11;
+// ---------- Google Maps loading ----------
+let map, geocoder, dirService, markers = [], renderers = [], toiletMarkers = [], infoWin;
 
-function dirLink(stops) {
-  const qs = stops.map(s => encodeURIComponent(s.query));
-  return "https://www.google.com/maps/dir/?api=1&travelmode=walking" +
-    "&origin=" + qs[0] +
-    "&destination=" + qs[qs.length - 1] +
-    (qs.length > 2 ? "&waypoints=" + qs.slice(1, -1).join("%7C") : "");
-}
-
-function pinLink(stop) {
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(stop.query);
-}
-
-function generate() {
-  const { stops, unrecognised } = parseInput($("input").value);
-  const legsEl = $("legs"), stopsEl = $("stops");
-  legsEl.innerHTML = ""; stopsEl.innerHTML = "";
-  $("stopsHead").hidden = true;
-  if (!stops.length) { setStatus("No addresses recognised — check the paste format.", "err"); return; }
-
-  // Leg links
-  for (let i = 0, leg = 1; i < stops.length - 1; i += LEG_SIZE - 1, leg++) {
-    const slice = stops.slice(i, i + LEG_SIZE);
-    if (slice.length < 2) break;
-    const a = document.createElement("a");
-    a.className = "leg";
-    a.href = dirLink(slice);
-    a.target = "_blank"; a.rel = "noopener";
-    const from = i + 1, to = i + slice.length;
-    a.innerHTML = '<div class="t"></div><div class="d"></div>';
-    a.querySelector(".t").textContent = "Leg " + leg + " — stops " + from + " to " + to;
-    a.querySelector(".d").textContent = slice[0].pretty + "  →  " + slice[slice.length - 1].pretty;
-    legsEl.appendChild(a);
-  }
-  if (stops.length === 1) {
-    const a = document.createElement("a");
-    a.className = "leg"; a.href = pinLink(stops[0]); a.target = "_blank"; a.rel = "noopener";
-    a.textContent = "Open " + stops[0].pretty;
-    legsEl.appendChild(a);
-  }
-
-  // Stop list with meter numbers + per-stop pin links
-  $("stopsHead").hidden = false;
-  stops.forEach((s, i) => {
-    const li = document.createElement("li");
-    if (!s.split) li.className = "bad";
-    li.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="info"><div class="a"></div>' +
-      (s.meter ? '<div class="m"></div>' : '<div class="warn">No meter number found</div>') +
-      (!s.split ? '<div class="warn">Could not split suburb — check this one</div>' : "") +
-      '</span><a class="pin" target="_blank" rel="noopener">Map</a>';
-    li.querySelector(".a").textContent = s.pretty;
-    if (s.meter) li.querySelector(".m").textContent = "Meter " + s.meter;
-    li.querySelector(".pin").href = pinLink(s);
-    stopsEl.appendChild(li);
+function loadGoogle(key) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&loading=async&callback=__gmapsReady";
+    s.onerror = () => reject(new Error("Could not load Google Maps — check the key and network."));
+    window.__gmapsReady = () => resolve();
+    // Google reports invalid keys via this global
+    window.gm_authFailure = () => {
+      setStatus("Google rejected the API key (check key, enabled APIs, and restrictions).", "err");
+      $("keyPanel").classList.remove("hidden");
+      $("planBtn").disabled = true;
+    };
+    document.head.appendChild(s);
   });
-
-  const nLegs = legsEl.children.length;
-  setStatus(stops.length + " stops → " + nLegs + " walking leg" + (nLegs === 1 ? "" : "s") +
-    (unrecognised.length ? " · " + unrecognised.length + " line(s) not recognised" : ""),
-    unrecognised.length ? "err" : "ok");
 }
 
-$("genBtn").addEventListener("click", generate);
+async function initMaps(key) {
+  await loadGoogle(key);
+  map = new google.maps.Map($("map"), { center: { lat: -25.27, lng: 133.77 }, zoom: 4, clickableIcons: false });
+  geocoder = new google.maps.Geocoder();
+  dirService = new google.maps.DirectionsService();
+  infoWin = new google.maps.InfoWindow();
+  $("planBtn").disabled = false;
+  $("keyPanel").classList.add("hidden");
+  setStatus("Google Maps ready.", "ok");
+}
+
+$("keyBtn").addEventListener("click", async () => {
+  const key = $("apiKey").value.trim();
+  if (!key) { setStatus("Paste an API key first.", "err"); return; }
+  setStatus("Loading Google Maps…");
+  try {
+    await initMaps(key);
+    lsSet("gmaps_key", key);
+  } catch (e) { setStatus(e.message, "err"); }
+});
+
+// Auto-load if a key was saved previously
+(() => {
+  const k = lsGet("gmaps_key");
+  if (k) { $("apiKey").value = k; $("keyBtn").click(); }
+})();
+
+// ---------- geocoding (Google, cached) ----------
+function geoCacheGet(q) { const v = lsGet("gg:" + q); return v ? JSON.parse(v) : null; }
+function geoCachePut(q, r) { lsSet("gg:" + q, JSON.stringify(r)); }
+
+function geocodeOne(stop) {
+  return new Promise(resolve => {
+    geocoder.geocode({ address: stop.query, region: "au" }, (results, status) => {
+      if (status === "OK" && results.length) {
+        const r = results[0];
+        resolve({
+          lat: r.geometry.location.lat(), lon: r.geometry.location.lng(),
+          match: r.formatted_address,
+          partial: !!r.partial_match || r.geometry.location_type === "APPROXIMATE"
+        });
+      } else if (status === "OVER_QUERY_LIMIT") {
+        resolve("RETRY");
+      } else resolve(null);
+    });
+  });
+}
+
+// ---------- directions (chunked to stay in the free Essentials tier: <=10 intermediates) ----------
+const CHUNK = 12; // origin + 10 waypoints + destination
+
+function routeChunk(slice) {
+  return new Promise((resolve, reject) => {
+    dirService.route({
+      origin: { lat: slice[0].lat, lng: slice[0].lon },
+      destination: { lat: slice[slice.length - 1].lat, lng: slice[slice.length - 1].lon },
+      waypoints: slice.slice(1, -1).map(p => ({ location: { lat: p.lat, lng: p.lon }, stopover: true })),
+      travelMode: google.maps.TravelMode.WALKING
+    }, (res, status) => {
+      if (status === "OK") resolve(res);
+      else reject(new Error("Routing failed: " + status));
+    });
+  });
+}
+
+// ---------- public toilets (National Public Toilet Map via data.gov.au) ----------
+const TOILET_RESOURCE = "34076296-6692-4e30-b627-67b7c4eb1027";
+async function loadToilets(bounds) {
+  toiletMarkers.forEach(m => m.setMap(null)); toiletMarkers = [];
+  const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  const sql = 'SELECT "Name","Address1","Town","OpeningHours","Accessible","KeyRequired","PaymentRequired","Latitude","Longitude","URL"' +
+    ' FROM "' + TOILET_RESOURCE + '" WHERE "Latitude"::float BETWEEN ' + sw.lat() + ' AND ' + ne.lat() +
+    ' AND "Longitude"::float BETWEEN ' + sw.lng() + ' AND ' + ne.lng() + ' LIMIT 100';
+  const res = await fetch("https://data.gov.au/data/api/3/action/datastore_search_sql?" + new URLSearchParams({ sql }));
+  if (!res.ok) return;
+  const data = await res.json();
+  if (!data.success) return;
+  for (const t of data.result.records) {
+    const mk = new google.maps.Marker({
+      map, position: { lat: +t.Latitude, lng: +t.Longitude },
+      label: { text: "🚻", fontSize: "14px" },
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 11, fillColor: "#7a5af8", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
+      title: t.Name
+    });
+    const notes = [];
+    if (t.Accessible === "True") notes.push("Wheelchair accessible");
+    if (t.KeyRequired === "True") notes.push("Key required");
+    if (t.PaymentRequired === "True") notes.push("Payment required");
+    mk.addListener("click", () => {
+      const div = document.createElement("div");
+      const b = document.createElement("b"); b.textContent = t.Name; div.appendChild(b);
+      [[t.Address1, t.Town].filter(Boolean).join(", "), t.OpeningHours || "", notes.join(" · ")]
+        .filter(Boolean).forEach(x => { const d = document.createElement("div"); d.textContent = x; div.appendChild(d); });
+      const a = document.createElement("a"); a.href = t.URL; a.target = "_blank"; a.textContent = "toiletmap.gov.au";
+      div.appendChild(a);
+      infoWin.setContent(div); infoWin.open(map, mk);
+    });
+    toiletMarkers.push(mk);
+  }
+}
+
+// ---------- helpers ----------
+function haversine(a, b) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLon = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function pathMidpoint(path) {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) total += haversine(path[i - 1], path[i]);
+  let target = total / 2, acc = 0;
+  for (let i = 1; i < path.length; i++) {
+    const d = haversine(path[i - 1], path[i]);
+    if (acc + d >= target) {
+      const f = d ? (target - acc) / d : 0;
+      return { lat: path[i - 1].lat + (path[i].lat - path[i - 1].lat) * f, lng: path[i - 1].lng + (path[i].lng - path[i - 1].lng) * f };
+    }
+    acc += d;
+  }
+  return path[path.length - 1];
+}
+function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m"; }
+function fmtDur(s) { const h = Math.floor(s / 3600), min = Math.round((s % 3600) / 60); return (h ? h + " h " : "") + min + " min walking"; }
+
+function clearMap() {
+  markers.forEach(m => m.setMap(null)); markers = [];
+  renderers.forEach(r => r.setMap(null)); renderers = [];
+  toiletMarkers.forEach(m => m.setMap(null)); toiletMarkers = [];
+}
+
+function renderStopList(stops, failed) {
+  const ol = $("stops"); ol.innerHTML = "";
+  stops.forEach((p, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span class="badge">' + (i + 1) + '</span><span class="addr"><div class="orig"></div><div class="meter"></div><div class="match"></div></span>';
+    li.querySelector(".orig").textContent = p.pretty;
+    li.querySelector(".meter").textContent = p.meter ? "Meter " + p.meter : "";
+    li.querySelector(".match").textContent = (p.partial ? "≈ check: " : "") + p.match;
+    li.addEventListener("click", () => { map.setZoom(18); map.panTo({ lat: p.lat, lng: p.lon }); });
+    ol.appendChild(li);
+  });
+  failed.forEach(f => {
+    const li = document.createElement("li");
+    li.className = "failed";
+    li.innerHTML = '<span class="badge">!</span><span class="addr"><div class="orig"></div><div class="match">Could not locate</div></span>';
+    li.querySelector(".orig").textContent = f;
+    ol.appendChild(li);
+  });
+}
+
+// ---------- main ----------
+async function plan() {
+  const { stops, unrecognised } = parseInput($("input").value);
+  if (stops.length < 2) { setStatus("Need at least two recognisable addresses.", "err"); return; }
+  if (stops.length > 500) { setStatus("Please keep it to 500 addresses.", "err"); return; }
+
+  const btn = $("planBtn");
+  btn.disabled = true;
+  clearMap();
+  $("stops").innerHTML = ""; $("summary").textContent = "";
+  let wakeLock = null;
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (e) {}
+
+  try {
+    // 1. Geocode (cached; Google allows fast rates — light pacing to be polite)
+    const points = [], failed = [];
+    for (let i = 0; i < stops.length; i++) {
+      const s = stops[i];
+      const cached = geoCacheGet(s.query);
+      if (cached) { points.push({ ...s, ...cached }); continue; }
+      setStatus("Locating " + (i + 1) + " of " + stops.length + "…");
+      let g = await geocodeOne(s);
+      if (g === "RETRY") { await sleep(1500); g = await geocodeOne(s); }
+      if (g && g !== "RETRY") { points.push({ ...s, ...g }); geoCachePut(s.query, g); }
+      else failed.push(s.pretty);
+      await sleep(120);
+    }
+    if (points.length < 2) throw new Error("Fewer than two addresses could be located.");
+
+    // 2. Route in entered order, chunked
+    const pts = $("roundTrip").checked ? [...points, points[0]] : points;
+    const fullPath = [];
+    let distance = 0, duration = 0;
+    const bounds = new google.maps.LatLngBounds();
+    const nChunks = Math.max(1, Math.ceil((pts.length - 1) / (CHUNK - 1)));
+    let chunkNo = 0;
+    for (let i = 0; i + 1 < pts.length; i += CHUNK - 1) {
+      chunkNo++;
+      setStatus("Planning route… " + (nChunks > 1 ? "part " + chunkNo + " of " + nChunks : ""));
+      const slice = pts.slice(i, i + CHUNK);
+      if (slice.length < 2) break;
+      const res = await routeChunk(slice);
+      const route = res.routes[0];
+      route.legs.forEach(l => { distance += l.distance.value; duration += l.duration.value; });
+      route.overview_path.forEach(ll => { fullPath.push({ lat: ll.lat(), lng: ll.lng() }); bounds.extend(ll); });
+      const rend = new google.maps.DirectionsRenderer({
+        map, directions: res, suppressMarkers: true, preserveViewport: true,
+        polylineOptions: { strokeColor: "#0b6bcb", strokeWeight: 5, strokeOpacity: 0.75 }
+      });
+      renderers.push(rend);
+      await sleep(150);
+    }
+
+    // 3. Numbered stop markers (in entered order)
+    points.forEach((p, i) => {
+      const mk = new google.maps.Marker({
+        map, position: { lat: p.lat, lng: p.lon },
+        label: { text: String(i + 1), color: "#fff", fontSize: "11px", fontWeight: "700" },
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#0b6bcb", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
+        title: p.pretty + (p.meter ? " — " + p.meter : "")
+      });
+      mk.addListener("click", () => {
+        infoWin.setContent("<b>Stop " + (i + 1) + "</b><br>" + p.pretty + (p.meter ? "<br>Meter " + p.meter : ""));
+        infoWin.open(map, mk);
+      });
+      markers.push(mk);
+      bounds.extend(mk.getPosition());
+    });
+
+    // 4. Parking = midpoint along the walked route
+    if (fullPath.length > 1) {
+      const mid = pathMidpoint(fullPath);
+      const mk = new google.maps.Marker({
+        map, position: mid,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#d92d20", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 3 },
+        title: "Suggested parking (route midpoint)", zIndex: 999
+      });
+      mk.addListener("click", () => {
+        infoWin.setContent("<b>Suggested parking</b><br>Midpoint of the walking route<br>" + mid.lat.toFixed(5) + ", " + mid.lng.toFixed(5));
+        infoWin.open(map, mk);
+      });
+      markers.push(mk);
+    }
+
+    map.fitBounds(bounds, 40);
+
+    // 5. Toilets
+    if ($("showToilets").checked) {
+      setStatus("Finding public toilets…");
+      try {
+        const pad = 0.01;
+        const tb = new google.maps.LatLngBounds(
+          { lat: bounds.getSouthWest().lat() - pad, lng: bounds.getSouthWest().lng() - pad },
+          { lat: bounds.getNorthEast().lat() + pad, lng: bounds.getNorthEast().lng() + pad });
+        await loadToilets(tb);
+      } catch (e) { console.warn("toilets:", e); }
+    }
+
+    renderStopList(points, failed);
+    $("summary").textContent = "Route: " + fmtDist(distance) + " · " + fmtDur(duration) + " · " + points.length + " stops" +
+      (failed.length ? " · " + failed.length + " not found" : "") +
+      (unrecognised.length ? " · " + unrecognised.length + " line(s) not recognised" : "");
+    setStatus(failed.length ? "Done — " + failed.length + " address(es) not located." : "Route planned.", failed.length ? "err" : "ok");
+  } catch (e) {
+    setStatus(e.message, "err");
+  } finally {
+    btn.disabled = false;
+    try { await wakeLock?.release(); } catch (e) {}
+  }
+}
+
+$("planBtn").addEventListener("click", plan);
 $("clearBtn").addEventListener("click", () => {
-  $("input").value = ""; $("legs").innerHTML = ""; $("stops").innerHTML = "";
-  $("stopsHead").hidden = true; setStatus("");
+  $("input").value = ""; $("stops").innerHTML = ""; $("summary").textContent = "";
+  clearMap(); setStatus("");
+  if (map) { map.setCenter({ lat: -25.27, lng: 133.77 }); map.setZoom(4); }
 });
 </script>
 </body>

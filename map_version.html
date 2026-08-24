@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meter Route Planner</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --bg: #f4f6f8; --panel: #ffffff; --ink: #1c2733; --muted: #5b6b7b;
+    --accent: #0b6bcb; --accent-ink: #ffffff; --line: #dde4ea; --ok: #1a7f37; --err: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { font-size: 12px; color: var(--muted); }
+  main { flex: 1; display: flex; min-height: 0; }
+  #sidebar { width: 360px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-y: auto; }
+  textarea { width: 100%; min-height: 140px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: 13px/1.45 Consolas, monospace; }
+  textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { border: 0; border-radius: 6px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #planBtn { background: var(--accent); color: var(--accent-ink); flex: 1; }
+  #planBtn:disabled { opacity: .55; cursor: wait; }
+  #clearBtn { background: #e8edf2; color: var(--ink); }
+  label.opt { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  #status { font-size: 12.5px; min-height: 18px; }
+  #status.err { color: var(--err); } #status.ok { color: var(--ok); }
+  #stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #stops li { display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; cursor: pointer; }
+  #stops li:hover { border-color: var(--accent); }
+  #stops li.failed { border-color: var(--err); background: #fef3f2; cursor: default; }
+  .badge { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  li.failed .badge { background: var(--err); }
+  .addr .orig { font-weight: 600; } .addr .match { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  #summary { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+  #map { flex: 1; }
+  .num-icon { background: var(--accent); color: #fff; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; font: 700 12px/1 "Segoe UI", sans-serif; }
+  .centre-icon { background: #d92d20; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  .toilet-icon { background: #7a5af8; color: #fff; border-radius: 6px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .popup-note { color: #5b6b7b; font-size: 11.5px; }
+  @media (max-width: 760px) { main { flex-direction: column; } #sidebar { width: 100%; max-height: 45vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Meter Route Planner</h1>
+  <span class="sub">Paste addresses &rarr; walking route in your order</span>
+</header>
+<main>
+  <div id="sidebar">
+    <textarea id="addresses" placeholder="One address per line (or separate with ;), AusPost format:&#10;&#10;12 Smith St, PARRAMATTA NSW 2150&#10;U 4 100 George St, SYDNEY NSW 2000&#10;45 Ocean Rd, BONDI BEACH NSW 2026"></textarea>
+    <div class="hint">AusPost format: street address, SUBURB STATE POSTCODE. Units like “U 4 100 George St” are fine.</div>
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="roundTrip" checked> Return to first stop (loop)</label>
+      <label class="opt"><input type="checkbox" id="showToilets" checked> Show public toilets</label>
+    </div>
+    <div class="row">
+      <button id="planBtn">Plan route</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+    <div id="status"></div>
+    <ol id="stops"></ol>
+    <div id="summary"></div>
+  </div>
+  <div id="map"></div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+
+const map = L.map("map").setView([-25.27, 133.77], 4); // Australia
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+let layerGroup = L.layerGroup().addTo(map);
+let toiletLayer = L.layerGroup().addTo(map);
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = cls || "";
+}
+
+// Split input into individual addresses (newlines or semicolons).
+function parseAddresses(text) {
+  return text.split(/[;\n]+/).map(s => s.trim().replace(/\s+/g, " ")).filter(Boolean);
+}
+
+// Strip unit/level prefixes that confuse geocoders: "U 4 100 George St" -> "100 George St".
+// Also handles "4/100 George St".
+function geocodeVariants(addr) {
+  const variants = [addr];
+  const noUnit = addr
+    .replace(/^(?:U|UNIT|APT|FLAT|SHOP|SE|SUITE|LVL|LEVEL|VILLA|TH|G)\s*\d+[A-Z]?[,\s]+/i, "")
+    .replace(/^\d+[A-Z]?\s*\/\s*/, "");
+  if (noUnit !== addr) variants.push(noUnit);
+  // Last resort: suburb/state/postcode only (portion after the last comma, or trailing "SUBURB STATE 0000").
+  const m = addr.match(/([A-Za-z' -]+\s(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s\d{4})\s*$/i);
+  if (m) variants.push(m[1]);
+  return variants;
+}
+
+async function geocode(addr) {
+  for (const variant of geocodeVariants(addr)) {
+    const url = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({
+      q: variant, countrycodes: "au", format: "jsonv2", limit: "1", addressdetails: "0",
+      // Soft bias toward Greater Melbourne (preferred, not exclusive)
+      viewbox: "144.4,-37.3,145.8,-38.5"
+    });
+    const res = await fetch(url, { headers: { "Accept-Language": "en-AU" } });
+    if (!res.ok) throw new Error("Geocoding service error (" + res.status + ")");
+    const data = await res.json();
+    if (data.length) {
+      return { lat: +data[0].lat, lon: +data[0].lon, match: data[0].display_name, approx: variant !== addr };
+    }
+    await sleep(1100); // stay under Nominatim's 1 req/sec policy before retrying a variant
+  }
+  return null;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// OSRM "route" service: walking path through the stops IN THE ORDER GIVEN.
+// FOSSGIS server provides the pedestrian profile (routed-foot).
+// Requests are chunked (the last stop of one chunk is the first of the next)
+// so routes with hundreds of stops stay within server URL/waypoint limits.
+async function planWalk(points, roundTrip) {
+  const pts = roundTrip ? [...points, points[0]] : points;
+  const CHUNK = 80;
+  const allCoords = [];
+  let distance = 0, duration = 0;
+  const nChunks = Math.max(1, Math.ceil((pts.length - 1) / (CHUNK - 1)));
+  let chunkNo = 0;
+  for (let i = 0; i + 1 < pts.length; i += CHUNK - 1) {
+    chunkNo++;
+    if (nChunks > 1) setStatus("Planning route… part " + chunkNo + " of " + nChunks);
+    const slice = pts.slice(i, i + CHUNK);
+    const coords = slice.map(p => p.lon + "," + p.lat).join(";");
+    const url = "https://routing.openstreetmap.de/routed-foot/route/v1/foot/" + coords +
+      "?overview=full&geometries=geojson&steps=false";
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Routing service error (" + res.status + ")");
+    const data = await res.json();
+    if (data.code !== "Ok" || !data.routes || !data.routes.length) throw new Error("Routing failed: " + (data.message || data.code));
+    const r = data.routes[0];
+    distance += r.distance;
+    duration += r.duration;
+    const seg = r.geometry.coordinates;
+    // avoid duplicating the shared join point between chunks
+    allCoords.push(...(allCoords.length ? seg.slice(1) : seg));
+  }
+  return { geometry: { type: "LineString", coordinates: allCoords }, distance, duration };
+}
+
+// Distance in metres between two [lon, lat] pairs (haversine)
+function haversine(a, b) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * rad, dLon = (b[0] - a[0]) * rad;
+  const h = Math.sin(dLat / 2) ** 2 +
+    Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Walk along the route geometry and return the point at half its total length
+function routeMidpoint(coords) {
+  let total = 0;
+  const seg = [];
+  for (let i = 1; i < coords.length; i++) {
+    seg.push(haversine(coords[i - 1], coords[i]));
+    total += seg[i - 1];
+  }
+  let target = total / 2, acc = 0;
+  for (let i = 1; i < coords.length; i++) {
+    if (acc + seg[i - 1] >= target) {
+      const f = seg[i - 1] ? (target - acc) / seg[i - 1] : 0;
+      return {
+        lon: coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * f,
+        lat: coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * f
+      };
+    }
+    acc += seg[i - 1];
+  }
+  const last = coords[coords.length - 1];
+  return { lon: last[0], lat: last[1] };
+}
+
+// Public toilets from the National Public Toilet Map (toiletmap.gov.au),
+// queried via the open dataset's SQL API on data.gov.au.
+const TOILET_RESOURCE = "34076296-6692-4e30-b627-67b7c4eb1027";
+
+async function loadToilets(bounds) {
+  toiletLayer.clearLayers();
+  const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  const sql = 'SELECT "Name","Address1","Town","OpeningHours","Accessible","KeyRequired","PaymentRequired","Latitude","Longitude","URL"' +
+    ' FROM "' + TOILET_RESOURCE + '"' +
+    ' WHERE "Latitude"::float BETWEEN ' + sw.lat + ' AND ' + ne.lat +
+    ' AND "Longitude"::float BETWEEN ' + sw.lng + ' AND ' + ne.lng +
+    ' LIMIT 100';
+  const res = await fetch("https://data.gov.au/data/api/3/action/datastore_search_sql?" +
+    new URLSearchParams({ sql }));
+  if (!res.ok) throw new Error("Toilet map service error (" + res.status + ")");
+  const data = await res.json();
+  if (!data.success) throw new Error("Toilet map query failed");
+
+  const icon = L.divIcon({ className: "toilet-icon", html: "🚻", iconSize: [24, 24], iconAnchor: [12, 12] });
+  for (const t of data.result.records) {
+    const notes = [];
+    if (t.Accessible === "True") notes.push("Wheelchair accessible");
+    if (t.KeyRequired === "True") notes.push("Key required");
+    if (t.PaymentRequired === "True") notes.push("Payment required");
+    const div = document.createElement("div");
+    const strong = document.createElement("b"); strong.textContent = t.Name;
+    div.appendChild(strong);
+    const lines = [
+      [t.Address1, t.Town].filter(Boolean).join(", "),
+      t.OpeningHours || "",
+      notes.join(" · ")
+    ].filter(Boolean);
+    for (const line of lines) {
+      const d = document.createElement("div");
+      d.className = "popup-note"; d.textContent = line;
+      div.appendChild(d);
+    }
+    const a = document.createElement("a");
+    a.href = t.URL; a.target = "_blank"; a.textContent = "Details on toiletmap.gov.au";
+    a.className = "popup-note";
+    div.appendChild(a);
+    toiletLayer.addLayer(L.marker([+t.Latitude, +t.Longitude], { icon }).bindPopup(div));
+  }
+  return data.result.records.length;
+}
+
+function numIcon(n) {
+  return L.divIcon({ className: "num-icon", html: String(n), iconSize: [26, 26], iconAnchor: [13, 13] });
+}
+
+function renderStops(ordered, failed) {
+  const ol = $("stops");
+  ol.innerHTML = "";
+  ordered.forEach((p, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span class="badge">' + (i + 1) + '</span><span class="addr"><div class="orig"></div><div class="match"></div></span>';
+    li.querySelector(".orig").textContent = p.input;
+    li.querySelector(".match").textContent = (p.approx ? "≈ approximate match: " : "") + p.match;
+    li.addEventListener("click", () => { map.setView([p.lat, p.lon], 17); p.marker.openPopup(); });
+    ol.appendChild(li);
+  });
+  failed.forEach(a => {
+    const li = document.createElement("li");
+    li.className = "failed";
+    li.innerHTML = '<span class="badge">!</span><span class="addr"><div class="orig"></div><div class="match">Could not locate — check spelling/format</div></span>';
+    li.querySelector(".orig").textContent = a;
+    ol.appendChild(li);
+  });
+}
+
+function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m"; }
+function fmtDur(s) {
+  const h = Math.floor(s / 3600), min = Math.round((s % 3600) / 60);
+  return (h ? h + " h " : "") + min + " min walking";
+}
+
+async function plan() {
+  const addrs = parseAddresses($("addresses").value);
+  if (addrs.length < 2) { setStatus("Enter at least two addresses.", "err"); return; }
+  if (addrs.length > 500) { setStatus("Please keep it to 500 addresses per route.", "err"); return; }
+
+  const btn = $("planBtn");
+  btn.disabled = true;
+  layerGroup.clearLayers();
+  $("stops").innerHTML = "";
+  $("summary").textContent = "";
+
+  // Keep the screen awake during long geocoding runs (phones would otherwise sleep)
+  let wakeLock = null;
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (e) {}
+
+  try {
+    // 1. Geocode sequentially (Nominatim usage policy: max 1 request/sec).
+    // Results are cached in localStorage, so re-running a round is near-instant.
+    const points = [], failed = [];
+    for (let i = 0; i < addrs.length; i++) {
+      const cached = cacheGet(addrs[i]);
+      if (cached) { points.push({ input: addrs[i], ...cached }); continue; }
+      setStatus("Locating address " + (i + 1) + " of " + addrs.length + "…");
+      try {
+        const g = await geocode(addrs[i]);
+        if (g) { points.push({ input: addrs[i], ...g }); cachePut(addrs[i], g); }
+        else failed.push(addrs[i]);
+      } catch (e) { failed.push(addrs[i]); }
+      if (i < addrs.length - 1) await sleep(1100);
+    }
+    if (points.length < 2) throw new Error("Fewer than two addresses could be located.");
+
+    // 2. Route through the stops in the order they were entered
+    setStatus("Planning route…");
+    const walk = await planWalk(points, $("roundTrip").checked);
+    const ordered = points; // input order is preserved
+
+    // 3. Draw
+    const route = L.geoJSON(walk.geometry, { style: { color: "#0b6bcb", weight: 5, opacity: 0.75 } });
+    layerGroup.addLayer(route);
+
+    ordered.forEach((p, i) => {
+      p.marker = L.marker([p.lat, p.lon], { icon: numIcon(i + 1) })
+        .bindPopup("<b>Stop " + (i + 1) + "</b><br>" + p.input);
+      layerGroup.addLayer(p.marker);
+    });
+
+    // Parking spot: the point halfway along the walked route itself
+    const mid = routeMidpoint(walk.geometry.coordinates);
+    const centre = L.marker([mid.lat, mid.lon], {
+      icon: L.divIcon({ className: "centre-icon", iconSize: [16, 16], iconAnchor: [8, 8] })
+    }).bindPopup("<b>Suggested parking</b><br>Midpoint of the walking route<br>" + mid.lat.toFixed(5) + ", " + mid.lon.toFixed(5));
+    layerGroup.addLayer(centre);
+
+    map.fitBounds(route.getBounds().pad(0.15));
+
+    // Public toilets within ~the route area (padded so nearby ones just outside show too)
+    lastRouteBounds = route.getBounds().pad(0.4);
+    toiletLayer.clearLayers();
+    if ($("showToilets").checked) {
+      setStatus("Finding public toilets…");
+      try { await loadToilets(lastRouteBounds); }
+      catch (e) { console.warn("Toilet lookup failed:", e); }
+    }
+
+    renderStops(ordered, failed);
+    const t = walk;
+    $("summary").textContent = "Route: " + fmtDist(t.distance) + " · " + fmtDur(t.duration) +
+      " · " + ordered.length + " stops" + (failed.length ? " · " + failed.length + " not found" : "");
+    setStatus(failed.length ? "Done — " + failed.length + " address(es) could not be located." : "Route planned.", failed.length ? "err" : "ok");
+  } catch (e) {
+    setStatus(e.message, "err");
+  } finally {
+    btn.disabled = false;
+    try { await wakeLock?.release(); } catch (e) {}
+  }
+}
+
+// --- geocode cache (localStorage) ---
+function cacheKey(addr) { return "geo:" + addr.toUpperCase().replace(/\s+/g, " ").trim(); }
+function cacheGet(addr) {
+  try { const v = localStorage.getItem(cacheKey(addr)); return v ? JSON.parse(v) : null; }
+  catch (e) { return null; }
+}
+function cachePut(addr, g) {
+  try { localStorage.setItem(cacheKey(addr), JSON.stringify({ lat: g.lat, lon: g.lon, match: g.match, approx: g.approx })); }
+  catch (e) {} // storage full/unavailable — just skip caching
+}
+
+let lastRouteBounds = null;
+
+$("planBtn").addEventListener("click", plan);
+$("showToilets").addEventListener("change", async e => {
+  if (e.target.checked) {
+    if (lastRouteBounds) {
+      try { await loadToilets(lastRouteBounds); } catch (err) { setStatus(err.message, "err"); }
+    }
+  } else {
+    toiletLayer.clearLayers();
+  }
+});
+$("clearBtn").addEventListener("click", () => {
+  $("addresses").value = "";
+  $("stops").innerHTML = "";
+  $("summary").textContent = "";
+  layerGroup.clearLayers();
+  toiletLayer.clearLayers();
+  lastRouteBounds = null;
+  setStatus("");
+  map.setView([-25.27, 133.77], 4);
+});
+</script>
+</body>
+</html>

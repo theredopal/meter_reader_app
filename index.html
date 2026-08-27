@@ -165,7 +165,7 @@ function parseInput(text) {
 }
 
 // ---------- Google Maps loading ----------
-let map, geocoder, dirService, markers = [], renderers = [], toiletMarkers = [], infoWin;
+let map, geocoder, dirService, markers = [], renderers = [], toiletMarkers = [], infoWin, idleListener = null;
 
 function loadGoogle(key) {
   return new Promise((resolve, reject) => {
@@ -324,6 +324,7 @@ function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.ro
 function fmtDur(s) { const h = Math.floor(s / 3600), min = Math.round((s % 3600) / 60); return (h ? h + " h " : "") + min + " min walking"; }
 
 function clearMap() {
+  if (idleListener) { google.maps.event.removeListener(idleListener); idleListener = null; }
   markers.forEach(m => m.setMap(null)); markers = [];
   renderers.forEach(r => r.setMap(null)); renderers = [];
   toiletMarkers.forEach(m => m.setMap(null)); toiletMarkers = [];
@@ -468,8 +469,10 @@ async function plan() {
       else cum[i] = rcum[wk] + (points[i].frac || 0) * (legDist[wk] || 0);
     }
 
-    // 4. Numbered stop markers (in entered order)
-    points.forEach((p, i) => {
+    // 4. Numbered stop markers. Mobile browsers choke on hundreds of markers, so
+    //    only ~60 evenly spaced key stops (always including first and last) are
+    //    shown up front; the rest materialise when zoomed in to street level.
+    const makeStopMarker = (p, i) => {
       const mk = new google.maps.Marker({
         map, position: { lat: p.lat, lng: p.lon },
         optimized: true, // labelled markers default to per-marker DOM nodes, which cripples Safari panning
@@ -482,7 +485,26 @@ async function plan() {
         infoWin.open(map, mk);
       });
       markers.push(mk);
-      bounds.extend(mk.getPosition());
+      return mk;
+    };
+    const keyEvery = Math.ceil(points.length / 60);
+    const lazy = [];
+    points.forEach((p, i) => {
+      bounds.extend({ lat: p.lat, lng: p.lon });
+      if (i % keyEvery === 0 || i === points.length - 1) makeStopMarker(p, i);
+      else lazy.push({ p, i, mk: null });
+    });
+    idleListener = map.addListener("idle", () => {
+      const vb = map.getBounds(), show = map.getZoom() >= 16;
+      for (const x of lazy) {
+        const want = show && vb && vb.contains({ lat: x.p.lat, lng: x.p.lon });
+        if (want && !x.mk) x.mk = makeStopMarker(x.p, x.i);
+        else if (!want && x.mk) {
+          x.mk.setMap(null);
+          markers.splice(markers.indexOf(x.mk), 1);
+          x.mk = null;
+        }
+      }
     });
 
     // 5. Parking: balance the walking-distance midpoint between first and last

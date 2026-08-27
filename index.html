@@ -263,6 +263,7 @@ async function loadToilets(bounds) {
   for (const t of data.result.records) {
     const mk = new google.maps.Marker({
       map, position: { lat: +t.Latitude, lng: +t.Longitude },
+      optimized: true,
       label: { text: "🚻", fontSize: "14px" },
       icon: { path: google.maps.SymbolPath.CIRCLE, scale: 11, fillColor: "#7a5af8", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
       title: t.Name
@@ -446,13 +447,14 @@ async function plan() {
         l.steps.forEach(st => st.path.forEach(ll => { path.push({ lat: ll.lat(), lng: ll.lng() }); bounds.extend(ll); }));
         legPaths.push(path);
       });
-      const rend = new google.maps.DirectionsRenderer({
-        map, directions: res, suppressMarkers: true, preserveViewport: true,
-        polylineOptions: { strokeColor: "#0b6bcb", strokeWeight: 5, strokeOpacity: 0.75 }
-      });
-      renderers.push(rend);
       await sleep(150);
     }
+    // One flat polyline instead of a DirectionsRenderer per chunk — Safari repaints
+    // every overlay on each pan frame, so fewer overlays keeps panning smooth.
+    renderers.push(new google.maps.Polyline({
+      map, path: legPaths.flat(),
+      strokeColor: "#0b6bcb", strokeWeight: 5, strokeOpacity: 0.75
+    }));
     const distance = legDist.reduce((a, b) => a + b, 0), duration = legDur.reduce((a, b) => a + b, 0);
 
     // Cumulative walking distance at every stop. Waypoints get exact leg sums;
@@ -470,6 +472,7 @@ async function plan() {
     points.forEach((p, i) => {
       const mk = new google.maps.Marker({
         map, position: { lat: p.lat, lng: p.lon },
+        optimized: true, // labelled markers default to per-marker DOM nodes, which cripples Safari panning
         label: { text: String(i + 1), color: "#fff", fontSize: "11px", fontWeight: "700" },
         icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: p.interpolated ? "#5b8ec9" : "#0b6bcb", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
         title: p.pretty + (p.meter ? " — " + p.meter : "") + (p.interpolated ? " (position estimated)" : "")
@@ -496,7 +499,7 @@ async function plan() {
       if (mid) {
         const before = Math.min(cum.filter(cd => cd <= sTarget).length, N - 1);
         const mk = new google.maps.Marker({
-          map, position: mid,
+          map, position: mid, optimized: true,
           icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#d92d20", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 3 },
           title: "Suggested parking (balanced midpoint)", zIndex: 999
         });

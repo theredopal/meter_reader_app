@@ -126,16 +126,26 @@ function parseAddressLine(line) {
     }
   }
   const state = stateFromPostcode(postcode);
+  // Strip unit/flat prefixes for the geocode query only — Google matches the base street address better.
+  const geoStreet = street.replace(UNIT_PREFIX_RE, "");
+  // Base street number + street name, for clustering consecutive stops on the same street.
+  const ss = street.replace(UNIT_PREFIX_RE, "").match(/^(?:\d+[A-Z]?\/)?(\d+)[A-Z]?(?:\s*-\s*\d+[A-Z]?)?\s+(.+)$/i);
+  const houseNum = ss ? +ss[1] : null;
+  const streetName = ss ? ss[2].toUpperCase() : null;
   return {
     raw: line,
     pretty: street + (suburb ? ", " + suburb : "") + (state ? " " + state : "") + " " + postcode,
-    query: street + (suburb ? ", " + suburb : "") + (state ? " " + state : "") + " " + postcode + ", Australia",
-    split: !!suburb
+    query: geoStreet + (suburb ? ", " + suburb : "") + (state ? " " + state : "") + " " + postcode + ", Australia",
+    split: !!suburb,
+    houseNum, streetName,
+    clusterKey: streetName ? streetName + "|" + suburb + "|" + postcode : null
   };
 }
 
 const METER_RE = /^[A-Z]{2,6}\d{4,}[A-Z0-9]*$/i;
-const ADDR_RE = /^\d+[A-Z]?(\/|\s).*\d{4}$/i;
+// Optional unit/flat/apartment prefix ("U 4", "UNIT 3", "FLAT 2B"), then street number.
+const UNIT_PREFIX_RE = /^(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+/i;
+const ADDR_RE = /^(?:(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+)?\d+[A-Z]?[\/\s].*\d{4}$/i;
 
 function parseInput(text) {
   const lines = text.split(/\r?\n/).map(s => s.trim().replace(/\s+/g, " ")).filter(Boolean);
@@ -281,10 +291,8 @@ function haversine(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-function pathMidpoint(path) {
-  let total = 0;
-  for (let i = 1; i < path.length; i++) total += haversine(path[i - 1], path[i]);
-  let target = total / 2, acc = 0;
+function pointAlongPath(path, target) {
+  let acc = 0;
   for (let i = 1; i < path.length; i++) {
     const d = haversine(path[i - 1], path[i]);
     if (acc + d >= target) {
@@ -294,6 +302,22 @@ function pathMidpoint(path) {
     acc += d;
   }
   return path[path.length - 1];
+}
+// Find the map point at cumulative walking distance s along the route.
+// Google's leg distances (legDist) are authoritative; each leg's polyline is walked
+// proportionally, since polyline haversine length differs slightly from road distance.
+function pointAtRouteDistance(s, legDist, legPaths, rcum) {
+  for (let k = 0; k < legDist.length; k++) {
+    if (s <= rcum[k + 1] || k === legDist.length - 1) {
+      const path = legPaths[k];
+      if (!path || path.length < 2) return path && path[0];
+      let plen = 0;
+      for (let i = 1; i < path.length; i++) plen += haversine(path[i - 1], path[i]);
+      const t = legDist[k] ? Math.max(0, s - rcum[k]) / legDist[k] * plen : 0;
+      return pointAlongPath(path, t);
+    }
+  }
+  return null;
 }
 function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1) + " km" : Math.round(m) + " m"; }
 function fmtDur(s) { const h = Math.floor(s / 3600), min = Math.round((s % 3600) / 60); return (h ? h + " h " : "") + min + " min walking"; }
@@ -328,7 +352,7 @@ function renderStopList(stops, failed) {
 async function plan() {
   const { stops, unrecognised } = parseInput($("input").value);
   if (stops.length < 2) { setStatus("Need at least two recognisable addresses.", "err"); return; }
-  if (stops.length > 500) { setStatus("Please keep it to 500 addresses.", "err"); return; }
+  if (stops.length > 2000) { setStatus("Please keep it to 2000 addresses.", "err"); return; }
 
   const btn = $("planBtn");
   btn.disabled = true;
@@ -338,25 +362,74 @@ async function plan() {
   try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (e) {}
 
   try {
-    // 1. Geocode (cached; Google allows fast rates — light pacing to be polite)
+    // 1. Cluster runs of consecutive stops on the same street. Only cluster
+    //    endpoints get geocoded and routed; interiors are interpolated along the street.
+    const clusters = [];
+    for (let i = 0; i < stops.length;) {
+      let j = i;
+      while (j + 1 < stops.length && stops[i].clusterKey && stops[j + 1].clusterKey === stops[i].clusterKey) j++;
+      clusters.push({ start: i, end: j });
+      i = j + 1;
+    }
+
+    // 2. Geocode (cached; cluster interiors skipped)
     const points = [], failed = [];
-    for (let i = 0; i < stops.length; i++) {
-      const s = stops[i];
+    let lookups = 0;
+    const locate = async s => {
       const cached = geoCacheGet(s.query);
-      if (cached) { points.push({ ...s, ...cached }); continue; }
-      setStatus("Locating " + (i + 1) + " of " + stops.length + "…");
+      if (cached) return cached;
+      lookups++;
+      setStatus("Locating " + s.pretty + "…");
       let g = await geocodeOne(s);
       if (g === "RETRY") { await sleep(1500); g = await geocodeOne(s); }
-      if (g && g !== "RETRY") { points.push({ ...s, ...g }); geoCachePut(s.query, g); }
-      else failed.push(s.pretty);
       await sleep(120);
+      if (g && g !== "RETRY") { geoCachePut(s.query, g); return g; }
+      return null;
+    };
+    for (const c of clusters) {
+      const size = c.end - c.start + 1;
+      const first = stops[c.start], last = stops[c.end];
+      let gA = null, gB = null;
+      if (size >= 3) { gA = await locate(first); gB = await locate(last); }
+      if (size >= 3 && gA && gB) {
+        const numSpan = last.houseNum - first.houseNum;
+        for (let i = c.start; i <= c.end; i++) {
+          const s = stops[i];
+          let frac = numSpan ? (s.houseNum - first.houseNum) / numSpan : (i - c.start) / (c.end - c.start);
+          frac = Math.min(1, Math.max(0, frac));
+          if (i === c.start) points.push({ ...s, ...gA, waypoint: true });
+          else if (i === c.end) points.push({ ...s, ...gB, waypoint: true });
+          else {
+            const g = geoCacheGet(s.query) || {
+              lat: gA.lat + (gB.lat - gA.lat) * frac,
+              lon: gA.lon + (gB.lon - gA.lon) * frac,
+              match: "≈ estimated along " + (s.streetName || "the street"),
+              partial: false, interpolated: true
+            };
+            points.push({ ...s, ...g, frac, waypoint: false });
+          }
+        }
+      } else {
+        // Small cluster, or an endpoint failed to geocode: handle each stop individually.
+        for (let i = c.start; i <= c.end; i++) {
+          const s = stops[i];
+          let g;
+          if (size >= 3 && i === c.start) g = gA;
+          else if (size >= 3 && i === c.end) g = gB;
+          else g = await locate(s);
+          if (g) points.push({ ...s, ...g, waypoint: true });
+          else failed.push(s.pretty);
+        }
+      }
     }
     if (points.length < 2) throw new Error("Fewer than two addresses could be located.");
 
-    // 2. Route in entered order, chunked
-    const pts = $("roundTrip").checked ? [...points, points[0]] : points;
-    const fullPath = [];
-    let distance = 0, duration = 0;
+    // 3. Route in entered order through waypoints only, chunked
+    const wpIdx = [];
+    points.forEach((p, i) => { if (p.waypoint) wpIdx.push(i); });
+    const routePts = wpIdx.map(i => points[i]);
+    const pts = $("roundTrip").checked ? [...routePts, routePts[0]] : routePts;
+    const legDist = [], legDur = [], legPaths = [];
     const bounds = new google.maps.LatLngBounds();
     const nChunks = Math.max(1, Math.ceil((pts.length - 1) / (CHUNK - 1)));
     let chunkNo = 0;
@@ -367,8 +440,12 @@ async function plan() {
       if (slice.length < 2) break;
       const res = await routeChunk(slice);
       const route = res.routes[0];
-      route.legs.forEach(l => { distance += l.distance.value; duration += l.duration.value; });
-      route.overview_path.forEach(ll => { fullPath.push({ lat: ll.lat(), lng: ll.lng() }); bounds.extend(ll); });
+      route.legs.forEach(l => {
+        legDist.push(l.distance.value); legDur.push(l.duration.value);
+        const path = [];
+        l.steps.forEach(st => st.path.forEach(ll => { path.push({ lat: ll.lat(), lng: ll.lng() }); bounds.extend(ll); }));
+        legPaths.push(path);
+      });
       const rend = new google.maps.DirectionsRenderer({
         map, directions: res, suppressMarkers: true, preserveViewport: true,
         polylineOptions: { strokeColor: "#0b6bcb", strokeWeight: 5, strokeOpacity: 0.75 }
@@ -376,14 +453,26 @@ async function plan() {
       renderers.push(rend);
       await sleep(150);
     }
+    const distance = legDist.reduce((a, b) => a + b, 0), duration = legDur.reduce((a, b) => a + b, 0);
 
-    // 3. Numbered stop markers (in entered order)
+    // Cumulative walking distance at every stop. Waypoints get exact leg sums;
+    // cluster interiors are placed fractionally within their cluster's leg.
+    const rcum = [0];
+    legDist.forEach((d, k) => rcum.push(rcum[k] + d));
+    const cum = new Array(points.length);
+    let wk = -1;
+    for (let i = 0; i < points.length; i++) {
+      if (points[i].waypoint) { wk++; cum[i] = rcum[wk]; }
+      else cum[i] = rcum[wk] + (points[i].frac || 0) * (legDist[wk] || 0);
+    }
+
+    // 4. Numbered stop markers (in entered order)
     points.forEach((p, i) => {
       const mk = new google.maps.Marker({
         map, position: { lat: p.lat, lng: p.lon },
         label: { text: String(i + 1), color: "#fff", fontSize: "11px", fontWeight: "700" },
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: "#0b6bcb", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
-        title: p.pretty + (p.meter ? " — " + p.meter : "")
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: p.interpolated ? "#5b8ec9" : "#0b6bcb", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
+        title: p.pretty + (p.meter ? " — " + p.meter : "") + (p.interpolated ? " (position estimated)" : "")
       });
       mk.addListener("click", () => {
         infoWin.setContent("<b>Stop " + (i + 1) + "</b><br>" + p.pretty + (p.meter ? "<br>Meter " + p.meter : ""));
@@ -393,24 +482,37 @@ async function plan() {
       bounds.extend(mk.getPosition());
     });
 
-    // 4. Parking = midpoint along the walked route
-    if (fullPath.length > 1) {
-      const mid = pathMidpoint(fullPath);
-      const mk = new google.maps.Marker({
-        map, position: mid,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#d92d20", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 3 },
-        title: "Suggested parking (route midpoint)", zIndex: 999
-      });
-      mk.addListener("click", () => {
-        infoWin.setContent("<b>Suggested parking</b><br>Midpoint of the walking route<br>" + mid.lat.toFixed(5) + ", " + mid.lng.toFixed(5));
-        infoWin.open(map, mk);
-      });
-      markers.push(mk);
+    // 5. Parking: balance the walking-distance midpoint between first and last
+    //    stops with the stop-count midpoint, then place the marker on the route.
+    if (legDist.length) {
+      const N = points.length;
+      const span = cum[N - 1];                             // walk from stop 1 to stop N (return leg excluded)
+      const sDist = span / 2;                              // equidistant from first & last address
+      const mi = (N - 1) / 2, lo = Math.floor(mi);         // stop-count midpoint, interpolated between stops
+      const hi = Math.min(lo + 1, N - 1);
+      const sStop = cum[lo] + (mi - lo) * (cum[hi] - cum[lo]);
+      const sTarget = (sDist + sStop) / 2;                 // equal-weight blend of the two criteria
+      const mid = pointAtRouteDistance(sTarget, legDist, legPaths, rcum);
+      if (mid) {
+        const before = Math.min(cum.filter(cd => cd <= sTarget).length, N - 1);
+        const mk = new google.maps.Marker({
+          map, position: mid,
+          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#d92d20", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 3 },
+          title: "Suggested parking (balanced midpoint)", zIndex: 999
+        });
+        mk.addListener("click", () => {
+          infoWin.setContent("<b>Suggested parking</b><br>~" + fmtDist(sTarget) + " to stop 1 · ~" + fmtDist(span - sTarget) + " to stop " + N +
+            "<br>Between stops " + before + " and " + Math.min(before + 1, N) +
+            "<br>" + mid.lat.toFixed(5) + ", " + mid.lng.toFixed(5));
+          infoWin.open(map, mk);
+        });
+        markers.push(mk);
+      }
     }
 
     map.fitBounds(bounds, 40);
 
-    // 5. Toilets
+    // 6. Toilets
     if ($("showToilets").checked) {
       setStatus("Finding public toilets…");
       try {
@@ -423,7 +525,10 @@ async function plan() {
     }
 
     renderStopList(points, failed);
+    const interpolated = points.filter(p => p.interpolated).length;
     $("summary").textContent = "Route: " + fmtDist(distance) + " · " + fmtDur(duration) + " · " + points.length + " stops" +
+      (interpolated ? " · " + interpolated + " clustered (est. positions)" : "") +
+      (lookups ? " · " + lookups + " lookups" : " · all from cache") +
       (failed.length ? " · " + failed.length + " not found" : "") +
       (unrecognised.length ? " · " + unrecognised.length + " line(s) not recognised" : "");
     setStatus(failed.length ? "Done — " + failed.length + " address(es) not located." : "Route planned.", failed.length ? "err" : "ok");

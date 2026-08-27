@@ -27,6 +27,9 @@
   label.opt { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
   #status { font-size: 12.5px; min-height: 18px; }
   #status.err { color: var(--err); } #status.ok { color: var(--ok); }
+  #progWrap { height: 6px; background: #e8edf2; border-radius: 3px; overflow: hidden; display: none; }
+  #progWrap.on { display: block; }
+  #progBar { height: 100%; width: 0; background: var(--accent); transition: width .25s; }
   #stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
   #stops li { display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; cursor: pointer; }
   #stops li:hover { border-color: var(--accent); }
@@ -63,6 +66,7 @@
       <button id="clearBtn">Clear</button>
     </div>
     <div id="status"></div>
+    <div id="progWrap"><div id="progBar"></div></div>
     <ol id="stops"></ol>
     <div id="summary"></div>
   </div>
@@ -74,6 +78,12 @@
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function setStatus(msg, cls) { $("status").textContent = msg; $("status").className = cls || ""; }
+function progress(f) {
+  const w = $("progWrap");
+  if (f == null) { w.classList.remove("on"); $("progBar").style.width = "0"; return; }
+  w.classList.add("on");
+  $("progBar").style.width = Math.min(100, Math.round(f * 100)) + "%";
+}
 
 // ---------- storage helpers (fail-soft where storage is unavailable) ----------
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -338,7 +348,7 @@ function renderStopList(stops, failed) {
     li.querySelector(".orig").textContent = p.pretty;
     li.querySelector(".meter").textContent = p.meter ? "Meter " + p.meter : "";
     li.querySelector(".match").textContent = (p.partial ? "≈ check: " : "") + p.match;
-    li.addEventListener("click", () => { map.setZoom(18); map.panTo({ lat: p.lat, lng: p.lon }); });
+    li.addEventListener("click", () => { map.setZoom(19); map.panTo({ lat: p.lat, lng: p.lon }); });
     ol.appendChild(li);
   });
   failed.forEach(f => {
@@ -374,9 +384,11 @@ async function plan() {
       i = j + 1;
     }
 
-    // 2. Geocode (cached; cluster interiors skipped)
+    // 2. Geocode (cached; cluster interiors skipped). Geocoding fills the first
+    //    80% of the progress bar, routing the last 20%.
+    progress(0);
     const points = [], failed = [];
-    let lookups = 0;
+    let lookups = 0, stopsDone = 0;
     const locate = async s => {
       const cached = geoCacheGet(s.query);
       if (cached) return cached;
@@ -423,6 +435,8 @@ async function plan() {
           else failed.push(s.pretty);
         }
       }
+      stopsDone += size;
+      progress(stopsDone / stops.length * 0.8);
     }
     if (points.length < 2) throw new Error("Fewer than two addresses could be located.");
 
@@ -448,6 +462,7 @@ async function plan() {
         l.steps.forEach(st => st.path.forEach(ll => { path.push({ lat: ll.lat(), lng: ll.lng() }); bounds.extend(ll); }));
         legPaths.push(path);
       });
+      progress(0.8 + chunkNo / nChunks * 0.2);
       await sleep(150);
     }
     // One flat polyline instead of a DirectionsRenderer per chunk — Safari repaints
@@ -470,8 +485,8 @@ async function plan() {
     }
 
     // 4. Numbered stop markers. Mobile browsers choke on hundreds of markers, so
-    //    only ~60 evenly spaced key stops (always including first and last) are
-    //    shown up front; the rest materialise when zoomed in to street level.
+    //    zoomed out only cluster start/end points and solo stops are shown; the
+    //    interior stops materialise when zoomed in very close (~50 m view).
     const makeStopMarker = (p, i) => {
       const mk = new google.maps.Marker({
         map, position: { lat: p.lat, lng: p.lon },
@@ -487,15 +502,15 @@ async function plan() {
       markers.push(mk);
       return mk;
     };
-    const keyEvery = Math.ceil(points.length / 60);
     const lazy = [];
     points.forEach((p, i) => {
       bounds.extend({ lat: p.lat, lng: p.lon });
-      if (i % keyEvery === 0 || i === points.length - 1) makeStopMarker(p, i);
+      if (p.waypoint) makeStopMarker(p, i);
       else lazy.push({ p, i, mk: null });
     });
     idleListener = map.addListener("idle", () => {
-      const vb = map.getBounds(), show = map.getZoom() >= 16;
+      // zoom 19 ≈ a 50 m-wide view on a phone: only then show every stop
+      const vb = map.getBounds(), show = map.getZoom() >= 19;
       for (const x of lazy) {
         const want = show && vb && vb.contains({ lat: x.p.lat, lng: x.p.lon });
         if (want && !x.mk) x.mk = makeStopMarker(x.p, x.i);
@@ -561,6 +576,7 @@ async function plan() {
     setStatus(e.message, "err");
   } finally {
     btn.disabled = false;
+    progress(null);
     try { await wakeLock?.release(); } catch (e) {}
   }
 }

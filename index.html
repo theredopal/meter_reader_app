@@ -136,8 +136,9 @@ function parseAddressLine(line) {
     }
   }
   const state = stateFromPostcode(postcode);
-  // Strip unit/flat prefixes for the geocode query only — Google matches the base street address better.
-  const geoStreet = street.replace(UNIT_PREFIX_RE, "");
+  // Strip unit/flat prefixes for the geocode query only — Google matches the base
+  // street address better, and slash forms like "2/1A" often geocode to nothing.
+  const geoStreet = street.replace(UNIT_PREFIX_RE, "").replace(/^\d+[A-Z]?\//i, "");
   // Base street number + street name, for clustering consecutive stops on the same street.
   const ss = street.replace(UNIT_PREFIX_RE, "").match(/^(?:\d+[A-Z]?\/)?(\d+)[A-Z]?(?:\s*-\s*\d+[A-Z]?)?\s+(.+)$/i);
   const houseNum = ss ? +ss[1] : null;

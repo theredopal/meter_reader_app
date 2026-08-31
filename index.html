@@ -155,7 +155,7 @@ function parseAddressLine(line) {
 const METER_RE = /^[A-Z]{2,6}\d{4,}[A-Z0-9]*$/i;
 // Optional unit/flat/apartment prefix ("U 4", "UNIT 3", "FLAT 2B"), then street number.
 const UNIT_PREFIX_RE = /^(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+/i;
-const ADDR_RE = /^(?:(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+)?\d+[A-Z]?[\/\s].*\d{4}$/i;
+const ADDR_RE = /^(?:(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+)?\d+[A-Z]?(?:\s*-\s*\d+[A-Z]?)?[\/\s].*\d{4}$/i;
 
 function parseInput(text) {
   const lines = text.split(/\r?\n/).map(s => s.trim().replace(/\s+/g, " ")).filter(Boolean);

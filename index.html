@@ -444,7 +444,7 @@ async function plan() {
     const wpIdx = [];
     points.forEach((p, i) => { if (p.waypoint) wpIdx.push(i); });
     const routePts = wpIdx.map(i => points[i]);
-    const pts = $("roundTrip").checked ? [...routePts, routePts[0]] : routePts;
+    const pts = routePts;
     const legDist = [], legDur = [], legPaths = [];
     const bounds = new google.maps.LatLngBounds();
     const nChunks = Math.max(1, Math.ceil((pts.length - 1) / (CHUNK - 1)));

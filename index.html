@@ -502,10 +502,30 @@ async function plan() {
       markers.push(mk);
       return mk;
     };
+
+    const makeEndpointMarker = (p, i) => {
+      const mk = new google.maps.Marker({
+        map, position: { lat: p.lat, lng: p.lon },
+        optimized: true, // labelled markers default to per-marker DOM nodes, which cripples Safari panning
+        label: { text: String(i + 1), color: "#fff", fontSize: "11px", fontWeight: "700" },
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: p.interpolated ? "#61C95B" : "#0BCB0B", fillOpacity: 1, strokeColor: "#fff", strokeWeight: 2 },
+        title: p.pretty + (p.meter ? " — " + p.meter : "") + (p.interpolated ? " (position estimated)" : "")
+      });
+      mk.addListener("click", () => {
+        infoWin.setContent("<b>Stop " + (i + 1) + "</b><br>" + p.pretty + (p.meter ? "<br>Meter " + p.meter : ""));
+        infoWin.open(map, mk);
+      });
+      markers.push(mk);
+      return mk;
+    };
+    
     const lazy = [];
     points.forEach((p, i) => {
       bounds.extend({ lat: p.lat, lng: p.lon });
-      if (p.waypoint) makeStopMarker(p, i);
+      if (p.waypoint){
+        if (i = 0) makeEndpointMarker(p, i);
+        else if (i = points.length - 1) makeEndpointMarker(p, i);
+        else makeStopMarker(p, i);
       else lazy.push({ p, i, mk: null });
     });
     idleListener = map.addListener("idle", () => {

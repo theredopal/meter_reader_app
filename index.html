@@ -314,6 +314,45 @@ function pointAlongPath(path, target) {
   }
   return path[path.length - 1];
 }
+function pointToSegmentDistance(p, a, b) {
+  const dx = b.lng - a.lng, dy = b.lat - a.lat;
+  if (dx === 0 && dy === 0) return haversine(p, a);
+  const t = ((p.lng - a.lng) * dx + (p.lat - a.lat) * dy) / (dx * dx + dy * dy);
+  const clamped = Math.min(1, Math.max(0, t));
+  const q = { lat: a.lat + dy * clamped, lng: a.lng + dx * clamped };
+  return haversine(p, q);
+}
+function simplifyRoutePath(path, toleranceMeters = 18) {
+  if (!path || path.length < 3) return path || [];
+  const keep = new Uint8Array(path.length);
+  keep[0] = 1;
+  keep[path.length - 1] = 1;
+  const stack = [[0, path.length - 1]];
+  while (stack.length) {
+    const [start, end] = stack.pop();
+    if (end - start < 2) continue;
+    let maxDist = 0, maxIndex = -1;
+    const a = path[start], b = path[end];
+    for (let i = start + 1; i < end; i++) {
+      const d = pointToSegmentDistance(path[i], a, b);
+      if (d > maxDist) {
+        maxDist = d;
+        maxIndex = i;
+      }
+    }
+    if (maxIndex !== -1 && maxDist > toleranceMeters) {
+      stack.push([start, maxIndex], [maxIndex, end]);
+    } else {
+      keep[start] = 1;
+      keep[end] = 1;
+    }
+  }
+  const out = [];
+  for (let i = 0; i < path.length; i++) {
+    if (keep[i]) out.push(path[i]);
+  }
+  return out;
+}
 // Find the map point at cumulative walking distance s along the route.
 // Google's leg distances (legDist) are authoritative; each leg's polyline is walked
 // proportionally, since polyline haversine length differs slightly from road distance.
@@ -465,10 +504,10 @@ async function plan() {
       progress(0.8 + chunkNo / nChunks * 0.2);
       await sleep(150);
     }
-    // One flat polyline instead of a DirectionsRenderer per chunk — Safari repaints
-    // every overlay on each pan frame, so fewer overlays keeps panning smooth.
+
+    const displayPath = simplifyRoutePath(legPaths.flat(), 18);
     renderers.push(new google.maps.Polyline({
-      map, path: legPaths.flat(),
+      map, path: displayPath,
       strokeColor: "#0b6bcb", strokeWeight: 5, strokeOpacity: 0.75
     }));
     const distance = legDist.reduce((a, b) => a + b, 0), duration = legDur.reduce((a, b) => a + b, 0);

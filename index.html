@@ -34,7 +34,7 @@
   #stops li { display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; cursor: pointer; }
   #stops li:hover { border-color: var(--accent); }
   #stops li.failed { border-color: var(--err); background: #fef3f2; cursor: default; }
-  .badge { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .badge { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   li.failed .badge { background: var(--err); }
   .addr .orig { font-weight: 600; }
   .addr .meter { color: var(--meter); font-weight: 700; font-family: Consolas, monospace; font-size: 11.5px; }
@@ -154,8 +154,8 @@ function parseAddressLine(line) {
 
 const METER_RE = /^[A-Z]{2,6}\d{4,}[A-Z0-9]*$/i;
 // Optional unit/flat/apartment prefix ("U 4", "UNIT 3", "FLAT 2B"), then street number.
-const UNIT_PREFIX_RE = /^(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+/i;
-const ADDR_RE = /^(?:(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/,\s]+)?\d+[A-Z]?(?:\s*-\s*\d+[A-Z]?)?[\/\s].*\d{4}$/i;
+const UNIT_PREFIX_RE = /^(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/\s,]+/i;
+const ADDR_RE = /^(?:(?:UNIT|APARTMENT|APT|FLAT|SHOP|SUITE|SE|LVL|LEVEL|VILLA|TH|U|G)\s*\d+[A-Z]?[\/\s,]+)?\d+[A-Z]?(?:\s*-\s*\d+[A-Z]?)?[\/\s].*\d{4}$/i;
 
 function parseInput(text) {
   const lines = text.split(/\r?\n/).map(s => s.trim().replace(/\s+/g, " ")).filter(Boolean);
@@ -518,15 +518,17 @@ async function plan() {
       markers.push(mk);
       return mk;
     };
-    
+
     const lazy = [];
     points.forEach((p, i) => {
       bounds.extend({ lat: p.lat, lng: p.lon });
-      if (p.waypoint){
-        if (i = 0) makeEndpointMarker(p, i);
-        else if (i = points.length - 1) makeEndpointMarker(p, i);
+      if (p.waypoint) {
+        if (i === 0) makeEndpointMarker(p, i);
+        else if (i === points.length - 1) makeEndpointMarker(p, i);
         else makeStopMarker(p, i);
-      else lazy.push({ p, i, mk: null });
+      } else {
+        lazy.push({ p, i, mk: null });
+      }
     });
     idleListener = map.addListener("idle", () => {
       // zoom 19 ≈ a 50 m-wide view on a phone: only then show every stop

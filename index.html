@@ -532,7 +532,7 @@ async function plan() {
       const mi = (N - 1) / 2, lo = Math.floor(mi);         // stop-count midpoint, interpolated between stops
       const hi = Math.min(lo + 1, N - 1);
       const sStop = cum[lo] + (mi - lo) * (cum[hi] - cum[lo]);
-      const sTarget = (sDist + sStop) / 2;                 // equal-weight blend of the two criteria
+      const sTarget = (3*sDist + sStop) / 4;                 // equal-weight blend of the two criteria
       const mid = pointAtRouteDistance(sTarget, legDist, legPaths, rcum);
       if (mid) {
         const before = Math.min(cum.filter(cd => cd <= sTarget).length, N - 1);

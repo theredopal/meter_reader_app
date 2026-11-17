@@ -2,252 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f6f8">
   <title>Special Meter Reader</title>
   <style>
-    :root {
-      --bg: #f4f6f8;
-      --panel: #ffffff;
-      --ink: #1c2733;
-      --muted: #5b6b7b;
-      --accent: #0b6bcb;
-      --line: #dde4ea;
-      --soft: #eef4ff;
-      --danger: #b42318;
-      --good: #197d43;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
-    body {
-      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-    }
-    a { color: var(--accent); }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 14px max(18px, calc((100% - 1000px) / 2));
-      background: var(--panel);
-      border-bottom: 1px solid var(--line);
-    }
-    h1 { margin: 0; font-size: 1.25rem; }
-    .nav { display: flex; flex-wrap: wrap; gap: 10px; }
-    .nav a, .link-button, button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 42px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--ink);
-      cursor: pointer;
-      text-decoration: none;
-      font: inherit;
-      font-weight: 700;
-    }
-    button.primary { background: var(--accent); border-color: var(--accent); color: white; }
-    button.danger { background: #fff0ee; color: var(--danger); border-color: #f1cbc8; }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    main {
-      width: min(100% - 28px, 1000px);
-      margin: 22px auto 52px;
-      display: grid;
-      gap: 18px;
-    }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(28,39,51,0.05);
-      padding: clamp(16px, 3vw, 24px);
-    }
-    .field { margin-bottom: 14px; }
-    label { display: block; font-weight: 700; font-size: 0.92rem; margin-bottom: 6px; }
-    input, textarea {
-      width: 100%;
-      padding: 11px 12px;
-      border: 1px solid #b8c4d0;
-      border-radius: 8px;
-      color: var(--ink);
-      background: #fff;
-      font: inherit;
-    }
-    textarea {
-      min-height: 120px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      resize: vertical;
-    }
-    .hint, .muted {
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.45;
-    }
-    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .status {
-      min-height: 1.6em;
-      margin-top: 10px;
-      color: var(--muted);
-    }
-    .status.error { color: var(--danger); }
-    .status.ok { color: var(--good); }
-    .api-panel {
-      display: none;
-      margin-top: 12px;
-      background: #fff8e6;
-      border: 1px solid #f0d47a;
-      border-radius: 10px;
-      padding: 12px;
-    }
-    .api-panel.show { display: block; }
-    .current-card {
-      text-align: center;
-    }
-    #currentDue {
-      color: var(--muted);
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-    #currentAddress {
-      font-weight: 800;
-      font-size: clamp(1.7rem, 5vw, 2.6rem);
-      line-height: 1.2;
-      letter-spacing: -0.04em;
-      overflow-wrap: anywhere;
-      margin-bottom: 18px;
-    }
-    #nextBtn {
-      width: 100%;
-      min-height: 72px;
-      font-size: 1.2rem;
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-    .map-links {
-      margin-top: 18px;
-      justify-content: center;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .map-links .link-button {
-      flex: 1 1 240px;
-      max-width: 320px;
-    }
-    .list-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-    .read-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: 8px;
-    }
-    .read {
-      display: grid;
-      grid-template-columns: 36px minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: center;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px 10px;
-    }
-    .read.current {
-      border-color: var(--accent);
-      background: var(--soft);
-    }
-    .read.done {
-      opacity: 0.58;
-    }
-    .badge {
-      width: 30px;
-      height: 30px;
-      display: grid;
-      place-items: center;
-      border-radius: 50%;
-      background: #e7edf6;
-      font-weight: 800;
-    }
-    .read.current .badge { background: var(--accent); color: #fff; }
-    .read-content {
-      display: grid;
-      grid-template-columns: 90px minmax(0, 1fr);
-      gap: 8px;
-      align-items: center;
-    }
-    .read-content input {
-      width: 100%;
-      padding: 9px 10px;
-      font: inherit;
-    }
-    .read-actions {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .read-actions button {
-      min-width: 38px;
-      padding: 8px;
-      min-height: 36px;
-    }
-    .empty { margin: 14px 0 0; color: var(--muted); }
-    @media (max-width: 620px) {
-      .read { grid-template-columns: 30px minmax(0, 1fr); }
-      .read-actions { grid-column: 2; justify-content: flex-end; }
-      .read-content { grid-template-columns: 84px minmax(0, 1fr); }
-    }
+    :root { --bg:#f4f6f8; --panel:#fff; --ink:#1c2733; --muted:#5b6b7b; --accent:#0b6bcb; --line:#dde4ea; --soft:#eef4ff; --danger:#b42318; --good:#197d43; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); font-family:"Segoe UI",system-ui,sans-serif; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px max(18px,calc((100% - 1000px)/2)); background:var(--panel); border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:1.25rem; }
+    a { color:var(--accent); }
+    .nav,.row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .nav a,button,.link-button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:10px 14px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); text-decoration:none; font:inherit; font-weight:700; cursor:pointer; }
+    button.primary { color:#fff; background:var(--accent); border-color:var(--accent); }
+    button.danger { color:var(--danger); background:#fff0ee; border-color:#f1cbc8; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    main { width:min(100% - 28px,1000px); margin:22px auto 50px; display:grid; gap:18px; }
+    .card { padding:clamp(16px,3vw,24px); background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 24px rgb(28 39 51 / 5%); }
+    h2 { margin:0 0 12px; font-size:1.12rem; }
+    .field { margin-bottom:16px; }
+    label { display:block; margin-bottom:6px; font-size:.94rem; font-weight:700; }
+    input { width:100%; min-width:0; padding:11px 12px; border:1px solid #b8c4d0; border-radius:8px; color:var(--ink); background:#fff; font:inherit; }
+    input:focus,button:focus-visible,a:focus-visible { outline:3px solid rgb(11 107 203 / 30%); outline-offset:2px; }
+    .hint,.muted { color:var(--muted); font-size:.9rem; line-height:1.45; }
+    .add-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .add-box { padding:14px; border:1px solid var(--line); border-radius:11px; background:#fbfcfe; }
+    .add-box.urgent { border-top:4px solid #d92d20; }
+    .add-box.normal { border-top:4px solid var(--accent); }
+    .add-box .row { margin-top:9px; }
+    .add-box .row input { flex:1 1 200px; }
+    .api-panel { display:none; margin-top:12px; padding:12px; border:1px solid #f0d47a; border-radius:10px; background:#fff8e6; }
+    .api-panel.show { display:block; }
+    #status { min-height:1.5em; margin:10px 0 0; color:var(--muted); }
+    #status.error { color:var(--danger); } #status.ok { color:var(--good); }
+    .current-card { text-align:center; }
+    #currentDue { margin-bottom:10px; color:var(--muted); font-weight:700; }
+    #currentAddress { margin-bottom:18px; font-size:clamp(1.7rem,5vw,2.6rem); font-weight:800; line-height:1.2; letter-spacing:-.04em; overflow-wrap:anywhere; }
+    #nextBtn { width:100%; min-height:72px; border-color:var(--accent); background:var(--accent); color:#fff; font-size:1.2rem; }
+    .map-links { justify-content:center; display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    .map-links .link-button { flex:1 1 240px; max-width:330px; }
+    .list-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .read-list { display:grid; gap:8px; margin:14px 0 0; padding:0; list-style:none; }
+    .read { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    .read.current { border:2px solid var(--accent); background:var(--soft); }
+    .read.done { opacity:.55; }
+    .badge { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:#e7edf6; font-weight:800; }
+    .read.current .badge { color:white; background:var(--accent); }
+    .read-fields { display:grid; grid-template-columns:92px minmax(0,1fr); gap:8px; }
+    .read-fields input { padding:9px 10px; }
+    .read-fields .address-edit { grid-column:1 / -1; }
+    .read-actions { display:flex; gap:5px; }
+    .read-actions button { min-width:38px; min-height:38px; padding:7px; }
+    .empty { margin:14px 0 0; color:var(--muted); }
+    @media(max-width:680px) { .add-grid { grid-template-columns:1fr; } .read { grid-template-columns:30px minmax(0,1fr); } .read-actions { grid-column:2; justify-content:flex-end; } }
   </style>
 </head>
 <body>
   <header>
     <h1>Special Meter Reader</h1>
-    <nav class="nav" aria-label="Tools and navigation">
-      <a href="./index.html">Landing page</a>
-      <a href="./meter_reader.html">Classic reader</a>
-    </nav>
+    <nav class="nav" aria-label="Tools"><a href="./index.html">Landing page</a><a href="./meter_reader.html">Classic reader</a></nav>
   </header>
-
   <main>
-    <section class="card" aria-labelledby="setupTitle">
-      <h2 id="setupTitle">Route setup</h2>
-
+    <section class="card" aria-labelledby="routeSetupTitle">
+      <h2 id="routeSetupTitle">Route setup</h2>
       <div class="field">
         <label for="centralAddress">Central address</label>
-        <input id="centralAddress" type="text" autocomplete="street-address" placeholder="e.g. 123 Sydney Rd, Brunswick">
-        <div class="hint">This is saved in this browser and used as the anchor point for the route.</div>
+        <input id="centralAddress" type="text" autocomplete="street-address" placeholder="e.g. 123 Sydney Road, Brunswick">
+        <div class="hint">Saved in this browser. The route will start or finish near this location.</div>
       </div>
-
-      <div class="field">
-        <label for="bulkInput">Add reads</label>
-        <textarea id="bulkInput" placeholder="One read per line
-15/06 12 Sydney Road, Brunswick
-18/06 4 Albert Street, Coburg"></textarea>
-        <div class="hint">Use lines in the format: <strong>DD/MM street number street name, suburb</strong>.</div>
-      </div>
-
-      <div class="row">
-        <button type="button" id="addBtn" class="primary">Add reads</button>
-        <button type="button" id="planBtn">Plan route</button>
-        <button type="button" id="clearBtn" class="danger">Clear all</button>
-      </div>
-
-      <div id="apiPanel" class="api-panel" aria-live="polite">
-        <label for="apiKey">Google Maps API key (optional but recommended)</label>
-        <div class="row">
-          <input id="apiKey" type="password" placeholder="Paste your API key">
-          <button type="button" id="loadApiBtn" class="primary">Load Maps</button>
+      <div class="add-grid">
+        <div class="add-box urgent">
+          <label for="urgentAddress">Urgent reads</label>
+          <div class="hint">Due today / highest priority. Type an address and choose a Google Maps suggestion, or paste several addresses on separate lines.</div>
+          <div class="row"><input id="urgentAddress" class="address-entry" type="text" autocomplete="off" placeholder="Start typing an address"><button id="addUrgentBtn" class="primary" type="button">Add urgent</button></div>
         </div>
-        <div class="hint">Needed for more accurate drive-time estimates; the key stays in this browser.</div>
+        <div class="add-box normal">
+          <label for="normalAddress">Non-urgent reads</label>
+          <div class="hint">Due later. Type an address and choose a Google Maps suggestion, or paste several addresses on separate lines.</div>
+          <div class="row"><input id="normalAddress" class="address-entry" type="text" autocomplete="off" placeholder="Start typing an address"><button id="addNormalBtn" type="button">Add non-urgent</button></div>
+        </div>
       </div>
-
-      <div id="status" class="status" role="status" aria-live="polite">Ready.</div>
+      <div id="apiPanel" class="api-panel">
+        <label for="apiKey">Google Maps API key</label>
+        <div class="row"><input id="apiKey" type="password" placeholder="Paste your browser-restricted API key"><button id="loadApiBtn" class="primary" type="button">Load address suggestions</button></div>
+        <div class="hint">Google Maps JavaScript API and Places API must be enabled. The key is saved only in this browser.</div>
+      </div>
+      <div class="row" style="margin-top:14px"><button id="planBtn" class="primary" type="button">Plan drive order</button><button id="clearBtn" class="danger" type="button">Clear all reads</button></div>
+      <p id="status" role="status" aria-live="polite">Enter a central address and add reads to get started.</p>
     </section>
 
     <section class="card current-card" aria-labelledby="currentTitle">
@@ -255,607 +96,285 @@
       <div id="currentDue" aria-live="polite"></div>
       <div id="currentAddress" aria-live="polite">No reads queued</div>
       <button id="nextBtn" type="button" disabled>Clear this read · Next address</button>
-      <div class="map-links" id="mapLinks" hidden>
-        <a class="link-button" id="googleMapsLink" target="_blank" rel="noopener">Open next 10 in Google Maps</a>
-        <a class="link-button" id="appleMapsLink" target="_blank" rel="noopener">Open in Apple Maps</a>
+      <div id="mapLinks" class="map-links" hidden>
+        <a id="googleMapsLink" class="link-button" target="_blank" rel="noopener">Open next 10 in Google Maps</a>
+        <a id="appleMapsLink" class="link-button" target="_blank" rel="noopener">Open current read in Apple Maps</a>
       </div>
-      <p class="hint" style="margin-top: 14px;">Google Maps is best for a multi-stop route. Apple Maps opens the current address directly.</p>
+      <p class="hint">Google Maps can open a multi-stop driving route. Apple Maps opens the current destination.</p>
     </section>
 
-    <section class="card" aria-labelledby="listTitle">
-      <div class="list-header">
-        <h2 id="listTitle">Read order</h2>
-        <span id="count" class="muted"></span>
-      </div>
-      <p class="hint">Edit due dates or addresses directly. Drag rows or use the arrows to reorder.</p>
+    <section class="card" aria-labelledby="readOrderTitle">
+      <div class="list-head"><h2 id="readOrderTitle">Read order</h2><span id="count" class="muted"></span></div>
+      <p class="hint">Change urgency or edit addresses inline. Drag rows or use arrows to reorder; removing a read deletes it immediately.</p>
       <ol id="readList" class="read-list"></ol>
       <p id="emptyMessage" class="empty">No reads added yet.</p>
     </section>
   </main>
+<script>
+"use strict";
+const READS_KEY = "special_reader_v1";
+const CENTRAL_KEY = "special_reader_central_address";
+const GMAPS_KEY = "gmaps_key";
+let reads = [];
+let geocoder = null;
+let mapsLoading = null;
+let dragId = null;
+const $ = id => document.getElementById(id);
 
-  <script>
-    "use strict";
-    const STORAGE_KEY = "special_reader_v1";
-    const CENTRAL_KEY = "special_reader_central_address";
-    let reads = [];
-    let geocoder = null;
-    let mapsReady = false;
-    let dragId = null;
-
-    function setStatus(msg, kind = "") {
-      const box = document.getElementById("status");
-      box.textContent = msg;
-      box.className = "status" + (kind ? " " + kind : "");
+function newId() { return globalThis.crypto?.randomUUID ? crypto.randomUUID() : "read_" + Date.now() + "_" + Math.random().toString(16).slice(2); }
+function setStatus(text, type = "") { $("status").textContent = text; $("status").className = type; }
+function save() {
+  try { localStorage.setItem(READS_KEY, JSON.stringify(reads)); } catch (e) {}
+  try { localStorage.setItem(CENTRAL_KEY, $("centralAddress").value.trim()); } catch (e) {}
+}
+function loadSaved() {
+  try {
+    const data = JSON.parse(localStorage.getItem(READS_KEY) || "[]");
+    if (Array.isArray(data)) reads = data.filter(x => x && x.address).map(x => ({ id:x.id || newId(), address:String(x.address), priority:x.priority || (x.due ? "urgent" : "normal"), done:!!x.done, location:x.location || null }));
+    $("centralAddress").value = localStorage.getItem(CENTRAL_KEY) || "";
+  } catch (e) { reads = []; }
+}
+function loadMaps(key) {
+  if (window.google?.maps?.places) return Promise.resolve();
+  if (mapsLoading) return mapsLoading;
+  mapsLoading = new Promise((resolve, reject) => {
+    window.__specialMapsReady = () => resolve();
+    window.gm_authFailure = () => reject(new Error("Google rejected the API key. Check your API settings and website restrictions."));
+    const script = document.createElement("script");
+    script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&libraries=places&loading=async&callback=__specialMapsReady";
+    script.async = true;
+    script.onerror = () => reject(new Error("Google Maps could not load. Check the key and network."));
+    document.head.appendChild(script);
+  }).then(() => {
+    geocoder = new google.maps.Geocoder();
+    try { localStorage.setItem(GMAPS_KEY, key); } catch (e) {}
+    attachAllAutocomplete();
+  }).catch(error => { mapsLoading = null; throw error; });
+  return mapsLoading;
+}
+async function ensureMaps(showPanel = true) {
+  if (window.google?.maps?.places) { geocoder ||= new google.maps.Geocoder(); attachAllAutocomplete(); return true; }
+  let key = "";
+  try { key = localStorage.getItem(GMAPS_KEY) || ""; } catch (e) {}
+  key = $("apiKey").value.trim() || key;
+  if (!key) {
+    if (showPanel) $("apiPanel").classList.add("show");
+    return false;
+  }
+  try { await loadMaps(key); $("apiPanel").classList.remove("show"); return true; }
+  catch (error) { setStatus(error.message, "error"); $("apiPanel").classList.add("show"); return false; }
+}
+function formatPlace(place) {
+  if (!place) return "";
+  return place.formatted_address || place.name || "";
+}
+function rememberAutocomplete(input) {
+  if (!window.google?.maps?.places || input.dataset.autocomplete === "true") return;
+  const autocomplete = new google.maps.places.Autocomplete(input, { fields:["formatted_address","geometry","name"], componentRestrictions:{ country:"au" } });
+  autocomplete.addListener("place_changed", () => {
+    const place = autocomplete.getPlace();
+    const address = formatPlace(place);
+    if (address) input.value = address;
+    if (place.geometry?.location) {
+      input.dataset.lat = String(place.geometry.location.lat());
+      input.dataset.lng = String(place.geometry.location.lng());
     }
-
-    function uniqueId() {
-      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-      return "read_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-    }
-
-    function loadSaved() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            reads = parsed.filter(Boolean).map(item => ({
-              id: item.id || uniqueId(),
-              due: String(item.due || ""),
-              address: String(item.address || "").trim(),
-              done: !!item.done
-            })).filter(r => r.address);
-          }
-        }
-      } catch (e) { reads = []; }
-
-      try {
-        document.getElementById("centralAddress").value = localStorage.getItem(CENTRAL_KEY) || "";
-      } catch (e) {}
-    }
-
-    function saveReads() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(reads)); } catch (e) {}
-      try { localStorage.setItem(CENTRAL_KEY, document.getElementById("centralAddress").value.trim()); } catch (e) {}
-    }
-
-    function parseDueDate(value) {
-      const text = (value || "").trim();
-      const match = text.match(/^(\d{1,2})\/(\d{1,2})$/);
-      if (!match) return null;
-      const day = Number(match[1]);
-      const month = Number(match[2]);
-      if (Number.isNaN(day) || Number.isNaN(month) || day < 1 || day > 31 || month < 1 || month > 12) return null;
-      return { day, month };
-    }
-
-    function parseReadLine(line) {
-      const s = (line || "").trim();
-      if (!s) return null;
-      const match = s.match(/^(\d{1,2})\/(\d{1,2})\s+(.+)$/);
-      if (!match) return null;
-      const due = match[1].padStart(2, "0") + "/" + match[2].padStart(2, "0");
-      const address = match[3].trim();
-      if (!address) return null;
-      return { id: uniqueId(), due, address, done: false };
-    }
-
-    function diffDaysFromToday(dueText) {
-      const dueObj = parseDueDate(dueText);
-      if (!dueObj) return Number.MAX_SAFE_INTEGER;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let year = today.getFullYear();
-      let date = new Date(year, dueObj.month - 1, dueObj.day);
-      if (date < today) date = new Date(year + 1, dueObj.month - 1, dueObj.day);
-      const ms = date.getTime() - today.getTime();
-      return Math.round(ms / 86400000);
-    }
-
-    function dueLabel(due) {
-      if (!due) return "No date";
-      const diff = diffDaysFromToday(due);
-      if (diff === 0) return "Due today";
-      if (diff === 1) return "Due tomorrow";
-      if (diff === 2) return "Due in 2 days";
-      return "Due " + due;
-    }
-
-    function isSameSuburb(a, b) {
-      const ta = toTokens(a); const tb = toTokens(b);
-      return ta.some(t => tb.includes(t));
-    }
-
-    function toTokens(value) {
-      return String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, " ")
-        .split(/\s+/)
-        .filter(t => t.length > 2 && !["road","street","st","rd","ave","avenue","drive","dr","lane","ln","court","ct","close","cl","crescent","cres","place","pl","way","wynd","bvd","boulevard","parkway","pde","terrace","tce","highway","hwy","brunswick","coburg","merri","bek","vic","melbourne"].includes(t));
-    }
-
-    function commonTokenCount(a, b) {
-      const aa = toTokens(a);
-      const bb = toTokens(b);
-      const setB = new Set(bb);
-      return aa.filter(t => setB.has(t)).length;
-    }
-
-    function streetNumberFromAddress(addr) {
-      const m = String(addr).match(/^(?:\d+\s+|\d+[A-Za-z]?\s+)?(\d+)[A-Za-z]?/);
-      return m ? Number(m[1]) : 0;
-    }
-
-    function addressDistanceHeuristic(a, b) {
-      const sameSuburb = isSameSuburb(a, b) ? 0.1 : 1;
-      const tokens = commonTokenCount(a, b);
-      const numDiff = Math.abs(streetNumberFromAddress(a) - streetNumberFromAddress(b));
-      const base = 12 + numDiff * 0.35 + (tokens ? 0 : 5);
-      return base * sameSuburb;
-    }
-
-    function dueUrgency(read) {
-      const diff = diffDaysFromToday(read.due);
-      if (diff === 0) return 100;
-      if (diff === 1) return 80;
-      if (diff === 2) return 55;
-      if (diff < 7) return 28;
-      return 10;
-    }
-
-    function centralBias(address, central) {
-      const centralText = String(central || "");
-      if (!centralText.trim()) return 0;
-      const overlap = commonTokenCount(address, centralText);
-      const sameSuburb = isSameSuburb(address, centralText) ? 18 : 0;
-      return overlap * 10 + sameSuburb;
-    }
-
-    function candidateScore(currentAddress, candidateAddress, centralText) {
-      const base = addressDistanceHeuristic(currentAddress, candidateAddress);
-      const urgency = dueUrgency({ due: getDueTextFromAddress(candidateAddress) });
-      return base - urgency * 0.12 - centralBias(candidateAddress, centralText) * 0.4;
-    }
-
-    function getDueTextFromAddress(addr) {
-      const found = reads.find(r => r.address === addr && !r.done);
-      return found ? found.due : "";
-    }
-
-    function chooseNext(current, remaining, centralText) {
-      let best = remaining[0];
-      let bestScore = Number.POSITIVE_INFINITY;
-      for (const item of remaining) {
-        const score = candidateScore(current.address, item.address, centralText);
-        if (score < bestScore) {
-          bestScore = score;
-          best = item;
-        }
-      }
-      return best;
-    }
-
-    function routeOrderByBlendedPriority(items, centralText) {
-      if (!items.length) return [];
-      const startCandidates = items.slice();
-      const routeOptions = [];
-
-      for (const start of startCandidates) {
-        const route = [start];
-        const remaining = items.filter(item => item.id !== start.id);
-        let current = start;
-        while (remaining.length) {
-          const next = chooseNext(current, remaining, centralText);
-          route.push(next);
-          const idx = remaining.findIndex(item => item.id === next.id);
-          if (idx >= 0) remaining.splice(idx, 1);
-          current = next;
-        }
-        const total = evaluateRoute(route, centralText);
-        routeOptions.push({ route, total });
-      }
-
-      routeOptions.sort((a, b) => a.total - b.total);
-      return routeOptions[0].route;
-    }
-
-    function evaluateRoute(route, centralText) {
-      if (!route.length) return Infinity;
-      let total = 0;
-      for (let i = 1; i < route.length; i++) {
-        total += addressDistanceHeuristic(route[i - 1].address, route[i].address) * 1.5;
-      }
-      const dueValue = route.reduce((sum, item) => sum + (dueUrgency(item) * 0.5), 0);
-      const centralPenalty = centralText ? Math.min(
-        route[0] ? centralBias(route[0].address, centralText) : 0,
-        route[route.length - 1] ? centralBias(route[route.length - 1].address, centralText) : 0
-      ) : 0;
-      return total + dueValue - centralPenalty;
-    }
-
-    function sortReadsForRoute() {
-      const pending = reads.filter(r => !r.done);
-      if (!pending.length) return [];
-      const centralText = document.getElementById("centralAddress").value.trim();
-      const ordered = routeOrderByBlendedPriority(pending, centralText);
-      return ordered;
-    }
-
-    function renderList() {
-      const list = document.getElementById("readList");
-      list.innerHTML = "";
-      const pending = reads.filter(r => !r.done);
-      const current = pending[0] || null;
-      const countEl = document.getElementById("count");
-      countEl.textContent = reads.length ? `(${pending.length} remaining / ${reads.length} total)` : "";
-      document.getElementById("emptyMessage").hidden = reads.length > 0;
-
-      if (!reads.length) {
-        document.getElementById("currentDue").textContent = "";
-        document.getElementById("currentAddress").textContent = "No reads queued";
-        document.getElementById("nextBtn").disabled = true;
-        document.getElementById("mapLinks").hidden = true;
-        return;
-      }
-
-      const activeReads = reads.filter(r => !r.done);
-      const firstActive = activeReads[0] || null;
-      document.getElementById("currentDue").textContent = firstActive ? dueLabel(firstActive.due) : "";
-      document.getElementById("currentAddress").textContent = firstActive ? firstActive.address : "No reads queued";
-      document.getElementById("nextBtn").disabled = !firstActive;
-
-      if (firstActive) {
-        const nextTen = reads.filter(r => !r.done).slice(0, 10);
-        const google = "https://www.google.com/maps/dir/?api=1" +
-          "&origin=" + encodeURIComponent(firstActive.address) +
-          "&destination=" + encodeURIComponent(nextTen[nextTen.length - 1].address) +
-          "&travelmode=driving" +
-          (nextTen.length > 2 ? "&waypoints=" + encodeURIComponent(nextTen.slice(1, -1).map(r => r.address).join("|")) : "");
-        const apple = "https://maps.apple.com/?daddr=" + encodeURIComponent(firstActive.address) + "&dirflg=d";
-        document.getElementById("googleMapsLink").href = google;
-        document.getElementById("appleMapsLink").href = apple;
-        document.getElementById("mapLinks").hidden = false;
-      } else {
-        document.getElementById("mapLinks").hidden = true;
-      }
-
-      reads.forEach((read, index) => {
-        const li = document.createElement("li");
-        li.className = "read" + (read.done ? " done" : "") + (firstActive && read.id === firstActive.id ? " current" : "");
-        li.draggable = true;
-        li.dataset.id = read.id;
-
-        const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = read.done ? "✓" : index + 1;
-
-        const fields = document.createElement("div");
-        fields.className = "read-content";
-
-        const dueInput = document.createElement("input");
-        dueInput.type = "text";
-        dueInput.value = read.due;
-        dueInput.placeholder = "DD/MM";
-        dueInput.setAttribute("aria-label", "Due date for read " + index);
-        dueInput.addEventListener("change", () => {
-          read.due = dueInput.value.trim();
-          saveReads();
-          renderList();
-        });
-
-        const addressInput = document.createElement("input");
-        addressInput.type = "text";
-        addressInput.value = read.address;
-        addressInput.placeholder = "Street number and name, suburb";
-        addressInput.setAttribute("aria-label", "Address for read " + index);
-        addressInput.addEventListener("change", () => {
-          read.address = addressInput.value.trim();
-          saveReads();
-          renderList();
-        });
-
-        fields.appendChild(dueInput);
-        fields.appendChild(addressInput);
-
-        const actions = document.createElement("div");
-        actions.className = "read-actions";
-
-        const up = document.createElement("button");
-        up.type = "button";
-        up.textContent = "↑";
-        up.disabled = index === 0;
-        up.addEventListener("click", () => moveRead(index, index - 1));
-
-        const down = document.createElement("button");
-        down.type = "button";
-        down.textContent = "↓";
-        down.disabled = index === reads.length - 1;
-        down.addEventListener("click", () => moveRead(index, index + 1));
-
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.textContent = "×";
-        remove.className = "danger";
-        remove.addEventListener("click", () => {
-          reads.splice(index, 1);
-          saveReads();
-          renderList();
-        });
-
-        actions.appendChild(up);
-        actions.appendChild(down);
-        actions.appendChild(remove);
-
-        li.appendChild(badge);
-        li.appendChild(fields);
-        li.appendChild(actions);
-
-        li.addEventListener("dragstart", (event) => {
-          dragId = read.id;
-          event.dataTransfer.effectAllowed = "move";
-        });
-
-        li.addEventListener("dragover", (event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "move";
-        });
-
-        li.addEventListener("drop", (event) => {
-          event.preventDefault();
-          if (!dragId) return;
-          const fromIndex = reads.findIndex(r => r.id === dragId);
-          const toIndex = reads.findIndex(r => r.id === read.id);
-          if (fromIndex >= 0 && toIndex >= 0 && fromIndex !== toIndex) {
-            moveRead(fromIndex, toIndex);
-          }
-          dragId = null;
-        });
-
-        list.appendChild(li);
-      });
-    }
-
-    function moveRead(fromIndex, toIndex) {
-      if (toIndex < 0 || toIndex >= reads.length) return;
-      const [item] = reads.splice(fromIndex, 1);
-      reads.splice(toIndex, 0, item);
-      saveReads();
-      renderList();
-    }
-
-    function addFromInput() {
-      const text = document.getElementById("bulkInput").value;
-      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-      const added = [];
-      const failed = [];
-      for (const line of lines) {
-        const parsed = parseReadLine(line);
-        if (parsed) added.push(parsed);
-        else failed.push(line);
-      }
-      if (added.length) reads.push(...added);
-      document.getElementById("bulkInput").value = "";
-      saveReads();
-      renderList();
-      if (failed.length) {
-        setStatus(`Added ${added.length} read(s). Could not parse: ${failed.join("; ")}.`, "error");
-      } else {
-        setStatus(`Added ${added.length} read(s).`, "ok");
-      }
-    }
-
-    function clearAll() {
-      if (!reads.length) {
-        setStatus("Nothing to clear.");
-        return;
-      }
-      const ok = window.confirm("Remove all reads from this list?");
-      if (!ok) return;
-      reads = [];
-      saveReads();
-      renderList();
-      setStatus("All reads cleared.");
-    }
-
-    function clearCurrentAndAdvance() {
-      const firstActive = reads.find(r => !r.done);
-      if (!firstActive) return;
-      firstActive.done = true;
-      saveReads();
-      renderList();
-      setStatus("Current read cleared. Next address is ready.", "ok");
-    }
-
-    function geocodeAddress(address) {
-      return new Promise((resolve, reject) => {
-        if (!window.google || !google.maps || !geocoder) {
-          resolve({ lat: 0, lng: 0, fallback: true });
-          return;
-        }
-        geocoder.geocode({ address, region: "au" }, (results, status) => {
-          if (status === "OK" && results && results[0]) {
-            const loc = results[0].geometry.location;
-            resolve({ lat: loc.lat(), lng: loc.lng(), fallback: false });
-          } else {
-            resolve({ lat: 0, lng: 0, fallback: true });
-          }
-        });
-      });
-    }
-
-    function haversineKm(a, b) {
-      const toRad = deg => deg * Math.PI / 180;
-      const R = 6371;
-      const dLat = toRad(b.lat - a.lat);
-      const dLon = toRad(b.lng - a.lng);
-      const lat1 = toRad(a.lat);
-      const lat2 = toRad(b.lat);
-      const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-      return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-    }
-
-    function inferFallbackLocation(address) {
-      const text = String(address || "").toLowerCase();
-      const tokens = text.match(/[a-z]+/g) || [];
-      const suburb = tokens.slice(-2).join(" ");
-      const mock = {
-        lat: 0,
-        lng: 0,
-        fallback: true
-      };
-      if (suburb.includes("brunswick")) {
-        mock.lat = -37.7675;
-        mock.lng = 144.9591;
-      } else if (suburb.includes("coburg") || suburb.includes("merri") || suburb.includes("bek")) {
-        mock.lat = -37.7425;
-        mock.lng = 144.9550;
-      } else if (suburb.includes("fitzroy")) {
-        mock.lat = -37.7987;
-        mock.lng = 144.9787;
-      } else if (suburb.includes("northcote")) {
-        mock.lat = -37.7719;
-        mock.lng = 144.9967;
-      } else if (suburb.includes("pascoe")) {
-        mock.lat = -37.7248;
-        mock.lng = 145.0228;
-      } else {
-        mock.lat = -37.81;
-        mock.lng = 144.96;
-      }
-      return mock;
-    }
-
-    async function buildRouteOrder() {
-      const pending = reads.filter(r => !r.done);
-      if (pending.length < 2) return pending;
-      const centralText = document.getElementById("centralAddress").value.trim();
-
-      let centralLocation = { lat: -37.77, lng: 144.96 };
-      if (centralText) {
-        const geocoded = await geocodeAddress(centralText);
-        if (!geocoded.fallback) centralLocation = geocoded;
-        else centralLocation = inferFallbackLocation(centralText);
-      }
-
-      const resolved = [];
-      for (const item of pending) {
-        const loc = await geocodeAddress(item.address);
-        resolved.push({
-          ...item,
-          loc: loc.fallback ? inferFallbackLocation(item.address) : loc
-        });
-      }
-
-      const routeCandidates = [];
-
-      for (const start of resolved) {
-        const route = [start];
-        const remaining = resolved.filter(item => item.id !== start.id);
-        let current = start;
-        while (remaining.length) {
-          let best = remaining[0];
-          let bestCost = Number.POSITIVE_INFINITY;
-          for (const item of remaining) {
-            const drive = haversineKm(current.loc, item.loc);
-            const urgencyWeight = dueUrgency(item) * 0.18;
-            const centralPenalty = haversineKm(item.loc, centralLocation) * 0.7;
-            const localClusterBonus = commonTokenCount(current.address, item.address) * 0.6;
-            const cost = drive + urgencyWeight + centralPenalty - localClusterBonus;
-            if (cost < bestCost) {
-              bestCost = cost;
-              best = item;
-            }
-          }
-          route.push(best);
-          const idx = remaining.findIndex(item => item.id === best.id);
-          if (idx >= 0) remaining.splice(idx, 1);
-          current = best;
-        }
-
-        const finalCost = route.reduce((sum, item, idx) => {
-          if (!idx) return sum;
-          const prev = route[idx - 1];
-          const drive = haversineKm(prev.loc, item.loc);
-          const urgency = dueUrgency(item) * 0.22;
-          const startNear = haversineKm(route[0].loc, centralLocation) * 0.45;
-          const endNear = haversineKm(route[route.length - 1].loc, centralLocation) * 0.45;
-          return sum + drive + urgency + Math.min(startNear, endNear);
-        }, 0);
-
-        routeCandidates.push({ route, finalCost });
-      }
-
-      routeCandidates.sort((a, b) => a.finalCost - b.finalCost);
-      return (routeCandidates[0]?.route || []).map(item => ({
-        id: item.id,
-        due: item.due,
-        address: item.address,
-        done: item.done
-      }));
-    }
-
-    async function planRoute() {
-      const pending = reads.filter(r => !r.done);
-      if (!pending.length) {
-        setStatus("Add at least one unfinished read.", "error");
-        return;
-      }
-      setStatus("Planning route…", "");
-
-      const ordered = await buildRouteOrder();
-      if (!ordered.length) {
-        setStatus("No route could be built.", "error");
-        return;
-      }
-
-      const hold = new Map();
-      for (const read of reads) hold.set(read.id, read);
-
-      const rebuilt = [];
-      const done = reads.filter(r => r.done);
-      for (const item of ordered) {
-        const read = hold.get(item.id);
-        if (read) rebuilt.push(read);
-      }
-
-      reads = [...done, ...rebuilt];
-      saveReads();
-      renderList();
-      setStatus("Route ordered with a due-date and drive-time blend. Adjust manually if needed.", "ok");
-    }
-
-    function initMapsApi() {
-      if (window.google && google.maps) { geocoder = new google.maps.Geocoder(); mapsReady = true; return; }
-      const savedKey = (() => { try { return localStorage.getItem("gmaps_key") || ""; } catch (e) { return ""; } })();
-      const key = document.getElementById("apiKey").value.trim() || savedKey;
-      if (!key) return;
-      const script = document.createElement("script");
-      script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&loading=async&callback=__specialMapsReady";
-      script.async = true;
-      window.__specialMapsReady = () => {
-        geocoder = new google.maps.Geocoder();
-        mapsReady = true;
-        try { localStorage.setItem("gmaps_key", key); } catch (e) {}
-      };
-      script.onerror = () => setStatus("Google Maps could not load. Planning will still use the blended fallback algorithm.", "error");
-      document.head.appendChild(script);
-    }
-
-    document.getElementById("addBtn").addEventListener("click", addFromInput);
-    document.getElementById("clearBtn").addEventListener("click", clearAll);
-    document.getElementById("nextBtn").addEventListener("click", clearCurrentAndAdvance);
-    document.getElementById("centralAddress").addEventListener("change", saveReads);
-    document.getElementById("planBtn").addEventListener("click", () => {
-      planRoute();
+  });
+  input.dataset.autocomplete = "true";
+}
+function attachAllAutocomplete() {
+  if (!window.google?.maps?.places) return;
+  document.querySelectorAll("#centralAddress,.address-entry,.address-edit").forEach(rememberAutocomplete);
+}
+function geocodeAddress(address) {
+  return new Promise((resolve, reject) => {
+    if (!geocoder) return reject(new Error("Google Maps address lookup is not loaded. Load an API key first."));
+    geocoder.geocode({ address, region:"au" }, (results, status) => {
+      if (status === "OK" && results?.[0]) {
+        const result = results[0], location = result.geometry.location;
+        resolve({ address:result.formatted_address || address, location:{ lat:location.lat(), lng:location.lng() } });
+      } else reject(new Error("Google Maps could not find: " + address));
     });
-    document.getElementById("loadApiBtn").addEventListener("click", () => {
-      initMapsApi();
-      setStatus("Google Maps loaded if the key was valid.", "ok");
+  });
+}
+function addAddress(value, priority, location = null) {
+  const address = value.trim();
+  if (!address) return;
+  reads.push({ id:newId(), address, priority, done:false, location });
+}
+async function addInput(id, priority) {
+  const input = $(id), raw = input.value.trim();
+  if (!raw) { input.focus(); return; }
+  const lines = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const ready = await ensureMaps();
+  if (ready) {
+    let added = 0, failed = [];
+    for (const line of lines) {
+      const selectedLocation = lines.length === 1 && input.dataset.lat && input.dataset.lng
+        ? { lat:Number(input.dataset.lat), lng:Number(input.dataset.lng) } : null;
+      try {
+        const result = selectedLocation ? { address:line, location:selectedLocation } : await geocodeAddress(line);
+        addAddress(result.address, priority, result.location);
+        added++;
+      } catch (e) { failed.push(line); }
+    }
+    if (added) { input.value = ""; delete input.dataset.lat; delete input.dataset.lng; }
+    save(); render();
+    setStatus(failed.length ? `Added ${added}; could not find: ${failed.join("; ")}` : `Added ${added} ${priority === "urgent" ? "urgent" : "non-urgent"} read(s).`, failed.length ? "error" : "ok");
+  } else {
+    // Let entry continue without a key; each read is geocoded later when planning.
+    lines.forEach(line => addAddress(line, priority));
+    input.value = ""; save(); render();
+    $("apiPanel").classList.add("show");
+    setStatus(`Added ${lines.length} read(s). Load Google Maps to look up addresses and plan by driving distance.`);
+  }
+}
+function distanceKm(a,b) {
+  const rad=Math.PI/180, dLat=(b.lat-a.lat)*rad, dLng=(b.lng-a.lng)*rad;
+  const h=Math.sin(dLat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLng/2)**2;
+  return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+}
+function routeScore(route, central) {
+  let distance=0;
+  for(let i=1;i<route.length;i++) distance+=distanceKm(route[i-1].location,route[i].location);
+  let urgencyPenalty=0, urgentSeen=0;
+  for(let i=0;i<route.length;i++) {
+    if(route[i].priority === "urgent") urgentSeen++;
+    else if(urgentSeen < route.filter(x=>x.priority === "urgent").length) urgencyPenalty += 3.5;
+  }
+  const endpointDistance=Math.min(distanceKm(route[0].location,central),distanceKm(route[route.length-1].location,central));
+  // Endpoint preference is deliberately one-sided: penalize the nearer of the two ends,
+  // never require both ends to be close to the central address.
+  return distance + urgencyPenalty + endpointDistance*1.8;
+}
+function greedyRoute(items, start, central) {
+  const route=[start], remaining=items.filter(x=>x.id!==start.id);
+  let current=start;
+  while(remaining.length) {
+    let bestIndex=0, bestCost=Infinity;
+    const urgentRemain=remaining.some(x=>x.priority === "urgent");
+    remaining.forEach((candidate,index)=>{
+      const km=distanceKm(current.location,candidate.location);
+      // A soft priority cost: non-urgent reads can be visited early to keep a local
+      // cluster together, but urgent reads tend to be served before later reads.
+      const priorityCost=candidate.priority === "normal" && urgentRemain ? 3.5 : 0;
+      const cost=km+priorityCost;
+      if(cost<bestCost){bestCost=cost;bestIndex=index;}
     });
+    current=remaining.splice(bestIndex,1)[0]; route.push(current);
+  }
+  return route;
+}
+async function planRoute() {
+  const button=$("planBtn"), pending=reads.filter(r=>!r.done);
+  if(pending.length<2){setStatus("Add at least two unfinished reads before planning.","error");return;}
+  if(!$("centralAddress").value.trim()){ $("centralAddress").focus(); setStatus("Enter a central address before planning.","error");return; }
+  button.disabled=true;
+  try {
+    if(!await ensureMaps()) { setStatus("Load Google Maps to look up addresses and plan the route.","error"); return; }
+    setStatus("Looking up the central address…");
+    const centerResult=await geocodeAddress($("centralAddress").value.trim());
+    $("centralAddress").value=centerResult.address;
+    try{localStorage.setItem(CENTRAL_KEY,centerResult.address);}catch(e){}
+    const located=[];
+    for(let i=0;i<pending.length;i++) {
+      const read=pending[i];
+      setStatus(`Looking up address ${i+1} of ${pending.length}…`);
+      const result=read.location ? {address:read.address,location:read.location} : await geocodeAddress(read.address);
+      read.address=result.address; read.location=result.location; located.push(read);
+    }
+    // Try several central-near starts in both directions. The scoring keeps urgent
+    // reads favored while allowing short local hops to group nearby non-urgent reads.
+    const candidates=[...located].sort((a,b)=>distanceKm(a.location,centerResult.location)-distanceKm(b.location,centerResult.location)).slice(0,Math.min(8,located.length));
+    let best=null;
+    for(const start of candidates) {
+      const route=greedyRoute(located,start,centerResult.location);
+      for(const option of [route,[...route].reverse()]) {
+        const score=routeScore(option,centerResult.location);
+        if(!best||score<best.score) best={route:option,score};
+      }
+    }
+    const done=reads.filter(r=>r.done);
+    reads=[...done,...best.route];
+    save(); render();
+    setStatus("Route ordered: urgent reads are prioritized, nearby stops can remain together, and either route endpoint is favored near the central address. Review or adjust the order as needed.","ok");
+  } catch(error) { setStatus(error.message || "Could not plan this route.","error"); }
+  finally { button.disabled=false; }
+}
+function makeMapLinks(pending) {
+  const box=$("mapLinks");
+  if(!pending.length){box.hidden=true;return;}
+  const batch=pending.slice(0,10), first=batch[0].address, last=batch[batch.length-1].address;
+  const waypoints=batch.slice(1,-1).map(r=>r.address).join("|");
+  $("googleMapsLink").href="https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(first)+"&destination="+encodeURIComponent(last)+"&travelmode=driving"+(waypoints?"&waypoints="+encodeURIComponent(waypoints):"");
+  $("appleMapsLink").href="https://maps.apple.com/?daddr="+encodeURIComponent(first)+"&dirflg=d";
+  box.hidden=false;
+}
+function render() {
+  const list=$("readList"); list.innerHTML="";
+  const pending=reads.filter(r=>!r.done), current=pending[0]||null;
+  $("count").textContent=reads.length?`(${pending.length} remaining / ${reads.length} total)`:"";
+  $("emptyMessage").hidden=reads.length>0;
+  $("currentAddress").textContent=current?current.address:"No reads queued";
+  $("currentDue").textContent=current?(current.priority === "urgent"?"URGENT READ":"Non-urgent read"):"";
+  $("nextBtn").disabled=!current;
+  $("nextBtn").textContent=current?"Clear this read · Next address":"All reads complete";
+  makeMapLinks(pending);
+  reads.forEach((read,index)=>{
+    const li=document.createElement("li");
+    li.className="read"+(read.done?" done":"")+(current?.id===read.id?" current":"");
+    li.draggable=true; li.dataset.id=read.id;
+    const badge=document.createElement("span"); badge.className="badge"; badge.textContent=read.done?"✓":String(index+1);
+    const fields=document.createElement("div"); fields.className="read-fields";
+    const priority=document.createElement("select");
+    priority.setAttribute("aria-label","Priority for read "+(index+1));
+    priority.style.cssText="width:100%;padding:9px;border:1px solid #b8c4d0;border-radius:8px;background:white;font:inherit";
+    priority.innerHTML='<option value="urgent">Urgent</option><option value="normal">Non-urgent</option>';
+    priority.value=read.priority;
+    priority.addEventListener("change",()=>{read.priority=priority.value;save();render();});
+    const address=document.createElement("input"); address.type="text"; address.className="address-edit"; address.value=read.address; address.placeholder="Street number and name, suburb"; address.setAttribute("aria-label","Address for read "+(index+1));
+    address.addEventListener("change",async()=>{
+      const text=address.value.trim(); if(!text)return;
+      read.address=text; read.location=null; save();
+      if(await ensureMaps(false)) {
+        try { const result=await geocodeAddress(text); read.address=result.address;read.location=result.location;setStatus("Address found: "+result.address,"ok"); }
+        catch(e){setStatus(e.message,"error");}
+      }
+      save();render();
+    });
+    fields.append(priority,address);
+    const actions=document.createElement("div"); actions.className="read-actions";
+    const up=document.createElement("button");up.type="button";up.textContent="↑";up.setAttribute("aria-label","Move read up");up.disabled=index===0;up.addEventListener("click",()=>moveRead(index,index-1));
+    const down=document.createElement("button");down.type="button";down.textContent="↓";down.setAttribute("aria-label","Move read down");down.disabled=index===reads.length-1;down.addEventListener("click",()=>moveRead(index,index+1));
+    const remove=document.createElement("button");remove.type="button";remove.className="danger";remove.textContent="×";remove.setAttribute("aria-label","Remove read");remove.addEventListener("click",()=>{reads.splice(index,1);save();render();});
+    actions.append(up,down,remove); li.append(badge,fields,actions);
+    li.addEventListener("dragstart",event=>{dragId=read.id;event.dataTransfer.effectAllowed="move";});
+    li.addEventListener("dragover",event=>{event.preventDefault();});
+    li.addEventListener("drop",event=>{event.preventDefault();const from=reads.findIndex(x=>x.id===dragId);if(from>=0)moveRead(from,index);dragId=null;});
+    list.appendChild(li);
+  });
+  attachAllAutocomplete();
+}
+function moveRead(from,to){if(to<0||to>=reads.length)return;const [item]=reads.splice(from,1);reads.splice(to,0,item);save();render();}
+async function clearCurrent(){const current=reads.find(r=>!r.done);if(!current)return;current.done=true;save();render();setStatus("Read cleared. Next address is ready.","ok");}
+function clearAll(){if(!reads.length){setStatus("There are no reads to clear.");return;}if(!confirm("Remove all reads from this list?"))return;reads=[];save();render();setStatus("All reads cleared.");}
 
-    loadSaved();
-    renderList();
-    initMapsApi();
-  </script>
+$("addUrgentBtn").addEventListener("click",()=>addInput("urgentAddress","urgent"));
+$("addNormalBtn").addEventListener("click",()=>addInput("normalAddress","normal"));
+$("urgentAddress").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();addInput("urgentAddress","urgent");}});
+$("normalAddress").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();addInput("normalAddress","normal");}});
+$("centralAddress").addEventListener("change",save);
+$("nextBtn").addEventListener("click",clearCurrent);
+$("clearBtn").addEventListener("click",clearAll);
+$("planBtn").addEventListener("click",planRoute);
+$("loadApiBtn").addEventListener("click",async()=>{
+  const key=$("apiKey").value.trim();
+  if(!key){setStatus("Paste a Google Maps API key first.","error");return;}
+  try{await loadMaps(key);$("apiPanel").classList.remove("show");setStatus("Google Maps address suggestions are ready.","ok");}
+  catch(error){setStatus(error.message,"error");}
+});
+loadSaved(); render();
+(async()=>{let key="";try{key=localStorage.getItem(GMAPS_KEY)||"";}catch(e){}if(key){try{await loadMaps(key);}catch(e){$("apiPanel").classList.add("show");}}else $("apiPanel").classList.add("show");})();
+</script>
 </body>
 </html>

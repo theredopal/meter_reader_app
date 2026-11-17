@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Special Reader</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #1c2733;
+      --muted: #5b6b7b;
+      --accent: #0b6bcb;
+      --line: #dde4ea;
+      --soft: #eef4ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f7f9fb 0%, #eef4f9 100%);
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 48px 20px 60px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      letter-spacing: -0.04em;
+    }
+    .nav {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 10px 14px;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(28,39,51,0.08);
+      padding: 22px;
+    }
+    .intro {
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 18px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      font: 13px/1.5 Consolas, monospace;
+      background: #f9fbff;
+      color: var(--ink);
+    }
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .panel {
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      border-radius: 12px;
+    }
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .status {
+      min-height: 24px;
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Special Reader</h1>
+      <div class="nav">
+        <a class="button" href="./index.html">Landing page</a>
+        <a class="button primary" href="./meter_reader.html">Open classic reader</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="intro">
+        This is the new special-purpose reader page. It is intentionally scaffolded so you can build the upgraded logic without disrupting the working classic tool.
+      </p>
+
+      <div class="grid">
+        <div>
+          <textarea id="input" placeholder="Paste data for the special reader here..."></textarea>
+          <div class="status" id="status">Ready for new logic.</div>
+        </div>
+
+        <div class="side">
+          <div class="panel">
+            <h2>Plan</h2>
+            <p>Keep the legacy version running at the classic URL while the new routing logic is developed here.</p>
+          </div>
+
+          <div class="panel">
+            <h2>Purpose</h2>
+            <p>Use this page for the next iteration of route planning, meter parsing, or any special-case workflow.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

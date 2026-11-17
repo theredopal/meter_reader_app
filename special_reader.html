@@ -2,385 +2,860 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f4f6f8">
   <title>Special Meter Reader</title>
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f4f6f8; --panel: #fff; --ink: #1c2733; --muted: #5b6b7b;
-      --accent: #0b6bcb; --line: #dde4ea; --danger: #b42318; --soft: #eef4ff;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #1c2733;
+      --muted: #5b6b7b;
+      --accent: #0b6bcb;
+      --line: #dde4ea;
+      --soft: #eef4ff;
+      --danger: #b42318;
+      --good: #197d43;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px max(16px, calc((100% - 1000px) / 2)); background: var(--panel); border-bottom: 1px solid var(--line); }
-    h1 { margin: 0; font-size: 1.25rem; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
     a { color: var(--accent); }
-    main { width: min(100% - 28px, 1000px); margin: 22px auto 48px; display: grid; gap: 16px; }
-    .card { padding: clamp(16px, 3vw, 24px); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgb(28 39 51 / 5%); }
-    h2 { margin: 0 0 12px; font-size: 1.1rem; }
-    p { line-height: 1.5; }
-    .muted, .hint { color: var(--muted); font-size: .9rem; }
-    label { display: block; margin-bottom: 6px; font-size: .9rem; font-weight: 650; }
-    input, textarea { width: 100%; padding: 11px 12px; border: 1px solid #bdc9d4; border-radius: 8px; color: var(--ink); background: #fff; font: inherit; }
-    input:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 3px solid rgb(11 107 203 / 30%); outline-offset: 2px; }
-    textarea { min-height: 118px; resize: vertical; font: 14px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
-    .field { margin-bottom: 14px; }
-    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    button, .link-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 15px; border: 0; border-radius: 8px; background: #e8edf2; color: var(--ink); font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
-    button.primary { background: var(--accent); color: white; }
-    button.danger { background: #fff0ef; color: var(--danger); }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px max(18px, calc((100% - 1000px) / 2));
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { margin: 0; font-size: 1.25rem; }
+    .nav { display: flex; flex-wrap: wrap; gap: 10px; }
+    .nav a, .link-button, button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+      text-decoration: none;
+      font: inherit;
+      font-weight: 700;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    button.danger { background: #fff0ee; color: var(--danger); border-color: #f1cbc8; }
     button:disabled { opacity: .55; cursor: not-allowed; }
-    #status { min-height: 1.5em; margin: 10px 0 0; color: var(--muted); }
-    #status.error { color: var(--danger); }
-    #apiPanel { display: none; margin-top: 12px; padding: 12px; background: #fff8e6; border: 1px solid #f0d47a; border-radius: 8px; }
-    #apiPanel.show { display: block; }
-    .read-list { display: grid; gap: 8px; padding: 0; margin: 16px 0 0; list-style: none; }
-    .read { display: grid; grid-template-columns: 35px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-    .read.current { border: 2px solid var(--accent); background: var(--soft); }
-    .read.done { opacity: .56; }
-    .read-number { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #e8edf2; font-weight: 800; }
-    .read.current .read-number { background: var(--accent); color: white; }
-    .read-fields { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; }
-    .read-fields input { min-width: 0; padding: 9px; }
-    .read-actions { display: flex; gap: 5px; }
-    .read-actions button { min-width: 42px; padding: 7px; }
-    .current-card { text-align: center; }
-    #currentAddress { margin: 8px 0 20px; font-size: clamp(1.5rem, 5vw, 2.5rem); font-weight: 750; line-height: 1.2; overflow-wrap: anywhere; }
-    #currentDue { color: var(--muted); }
-    #nextBtn { min-height: 72px; width: 100%; font-size: 1.35rem; }
-    .map-links { margin-top: 14px; }
-    .map-links a { flex: 1; }
+    main {
+      width: min(100% - 28px, 1000px);
+      margin: 22px auto 52px;
+      display: grid;
+      gap: 18px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(28,39,51,0.05);
+      padding: clamp(16px, 3vw, 24px);
+    }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-weight: 700; font-size: 0.92rem; margin-bottom: 6px; }
+    input, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #b8c4d0;
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+    }
+    textarea {
+      min-height: 120px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      resize: vertical;
+    }
+    .hint, .muted {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status {
+      min-height: 1.6em;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--good); }
+    .api-panel {
+      display: none;
+      margin-top: 12px;
+      background: #fff8e6;
+      border: 1px solid #f0d47a;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .api-panel.show { display: block; }
+    .current-card {
+      text-align: center;
+    }
+    #currentDue {
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    #currentAddress {
+      font-weight: 800;
+      font-size: clamp(1.7rem, 5vw, 2.6rem);
+      line-height: 1.2;
+      letter-spacing: -0.04em;
+      overflow-wrap: anywhere;
+      margin-bottom: 18px;
+    }
+    #nextBtn {
+      width: 100%;
+      min-height: 72px;
+      font-size: 1.2rem;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .map-links {
+      margin-top: 18px;
+      justify-content: center;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .map-links .link-button {
+      flex: 1 1 240px;
+      max-width: 320px;
+    }
+    .list-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .read-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .read {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    .read.current {
+      border-color: var(--accent);
+      background: var(--soft);
+    }
+    .read.done {
+      opacity: 0.58;
+    }
+    .badge {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #e7edf6;
+      font-weight: 800;
+    }
+    .read.current .badge { background: var(--accent); color: #fff; }
+    .read-content {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+    .read-content input {
+      width: 100%;
+      padding: 9px 10px;
+      font: inherit;
+    }
+    .read-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .read-actions button {
+      min-width: 38px;
+      padding: 8px;
+      min-height: 36px;
+    }
     .empty { margin: 14px 0 0; color: var(--muted); }
     @media (max-width: 620px) {
-      header { padding: 12px 16px; }
-      .read { grid-template-columns: 32px minmax(0, 1fr); }
+      .read { grid-template-columns: 30px minmax(0, 1fr); }
       .read-actions { grid-column: 2; justify-content: flex-end; }
-      .read-fields { grid-template-columns: 82px minmax(0, 1fr); }
-      .read-actions button { min-height: 40px; }
+      .read-content { grid-template-columns: 84px minmax(0, 1fr); }
     }
   </style>
 </head>
 <body>
   <header>
     <h1>Special Meter Reader</h1>
-    <nav class="row" aria-label="Page links">
-      <a href="./index.html">All tools</a>
+    <nav class="nav" aria-label="Tools and navigation">
+      <a href="./index.html">Landing page</a>
       <a href="./meter_reader.html">Classic reader</a>
     </nav>
   </header>
+
   <main>
     <section class="card" aria-labelledby="setupTitle">
       <h2 id="setupTitle">Route setup</h2>
+
       <div class="field">
         <label for="centralAddress">Central address</label>
-        <input id="centralAddress" type="text" autocomplete="street-address" placeholder="Enter a central address, e.g. Brunswick VIC">
-        <div class="hint">Saved in this browser. The planner will try to start or finish near this address.</div>
+        <input id="centralAddress" type="text" autocomplete="street-address" placeholder="e.g. 123 Sydney Rd, Brunswick">
+        <div class="hint">This is saved in this browser and used as the anchor point for the route.</div>
       </div>
+
       <div class="field">
         <label for="bulkInput">Add reads</label>
-        <textarea id="bulkInput" placeholder="One read per line: DD/MM street number street name, suburb&#10;&#10;18/06 12 Sydney Road, Brunswick&#10;20/06 4 Albert Street, Brunswick"></textarea>
-        <div class="hint">Use day/month dates. The year is inferred as the next upcoming date.</div>
+        <textarea id="bulkInput" placeholder="One read per line
+15/06 12 Sydney Road, Brunswick
+18/06 4 Albert Street, Coburg"></textarea>
+        <div class="hint">Use lines in the format: <strong>DD/MM street number street name, suburb</strong>.</div>
       </div>
+
       <div class="row">
-        <button class="primary" id="addBtn" type="button">Add reads</button>
-        <button id="planBtn" type="button">Plan drive order</button>
-        <button class="danger" id="clearBtn" type="button">Clear all reads</button>
+        <button type="button" id="addBtn" class="primary">Add reads</button>
+        <button type="button" id="planBtn">Plan route</button>
+        <button type="button" id="clearBtn" class="danger">Clear all</button>
       </div>
-      <div id="apiPanel">
-        <label for="apiKey">Google Maps API key</label>
-        <div class="row"><input id="apiKey" type="password" placeholder="Paste your browser-restricted key"><button id="loadApiBtn" class="primary" type="button">Load planner</button></div>
-        <div class="hint">The planner uses the key saved by the classic reader if one is available. The key stays in this browser.</div>
+
+      <div id="apiPanel" class="api-panel" aria-live="polite">
+        <label for="apiKey">Google Maps API key (optional but recommended)</label>
+        <div class="row">
+          <input id="apiKey" type="password" placeholder="Paste your API key">
+          <button type="button" id="loadApiBtn" class="primary">Load Maps</button>
+        </div>
+        <div class="hint">Needed for more accurate drive-time estimates; the key stays in this browser.</div>
       </div>
-      <p id="status" role="status" aria-live="polite">Add your reads above to get started.</p>
+
+      <div id="status" class="status" role="status" aria-live="polite">Ready.</div>
     </section>
 
     <section class="card current-card" aria-labelledby="currentTitle">
       <h2 id="currentTitle">Current read</h2>
-      <div id="currentDue"></div>
-      <div id="currentAddress">No reads queued</div>
-      <button class="primary" id="nextBtn" type="button" disabled>Clear this read · Next address</button>
-      <div class="row map-links" id="mapLinks" hidden>
-        <a class="link-button" id="googleLink" target="_blank" rel="noopener">Open next reads in Google Maps</a>
-        <a class="link-button" id="appleLink" target="_blank" rel="noopener">Open current read in Apple Maps</a>
+      <div id="currentDue" aria-live="polite"></div>
+      <div id="currentAddress" aria-live="polite">No reads queued</div>
+      <button id="nextBtn" type="button" disabled>Clear this read · Next address</button>
+      <div class="map-links" id="mapLinks" hidden>
+        <a class="link-button" id="googleMapsLink" target="_blank" rel="noopener">Open next 10 in Google Maps</a>
+        <a class="link-button" id="appleMapsLink" target="_blank" rel="noopener">Open in Apple Maps</a>
       </div>
-      <p class="hint">Google Maps can open a multi-stop route. Apple Maps links to the current read; Apple Maps URL links do not reliably support a list of intermediate stops.</p>
+      <p class="hint" style="margin-top: 14px;">Google Maps is best for a multi-stop route. Apple Maps opens the current address directly.</p>
     </section>
 
     <section class="card" aria-labelledby="listTitle">
-      <h2 id="listTitle">Read order <span class="muted" id="count"></span></h2>
-      <p class="hint">Edit dates or addresses directly. Reorder with the arrows or drag a read. Done reads stay in the list until cleared.</p>
-      <ol class="read-list" id="readList"></ol>
-      <p class="empty" id="emptyMessage">No reads added yet.</p>
+      <div class="list-header">
+        <h2 id="listTitle">Read order</h2>
+        <span id="count" class="muted"></span>
+      </div>
+      <p class="hint">Edit due dates or addresses directly. Drag rows or use the arrows to reorder.</p>
+      <ol id="readList" class="read-list"></ol>
+      <p id="emptyMessage" class="empty">No reads added yet.</p>
     </section>
   </main>
-<script>
-"use strict";
-const $ = id => document.getElementById(id);
-const STORAGE_KEY = "special_reader_reads_v1";
-const CENTRAL_KEY = "special_reader_central_address";
-let reads = [];
-let mapsReady = false;
-let geocoder = null;
-let directions = null;
-let dragId = null;
 
-function setStatus(message, error = false) {
-  $("status").textContent = message;
-  $("status").classList.toggle("error", error);
-}
-function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(reads)); } catch (e) {}
-  try { localStorage.setItem(CENTRAL_KEY, $("centralAddress").value.trim()); } catch (e) {}
-}
-function loadSaved() {
-  try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    if (Array.isArray(value)) reads = value.filter(x => x && typeof x.address === "string").map(x => ({ id: x.id || crypto.randomUUID(), due: x.due || "", address: x.address, done: !!x.done }));
-    $("centralAddress").value = localStorage.getItem(CENTRAL_KEY) || "";
-  } catch (e) { reads = []; }
-}
-function id() { return globalThis.crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2); }
-function parseLine(line) {
-  const match = line.trim().match(/^(\d{1,2})\/(\d{1,2})\s+(.+)$/);
-  if (!match) return null;
-  const day = Number(match[1]), month = Number(match[2]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const address = match[3].trim();
-  if (!address) return null;
-  return { id: id(), due: String(day).padStart(2, "0") + "/" + String(month).padStart(2, "0"), address, done: false };
-}
-function dueDate(read) {
-  const m = read.due.match(/^(\d{1,2})\/(\d{1,2})$/);
-  if (!m) return new Date(8640000000000000);
-  const day = Number(m[1]), month = Number(m[2]);
-  const now = new Date();
-  let year = now.getFullYear();
-  let date = new Date(year, month - 1, day, 12);
-  if (date.getMonth() !== month - 1 || date.getDate() !== day) return new Date(8640000000000000);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (date < today) date = new Date(++year, month - 1, day, 12);
-  return date;
-}
-function dueText(read) { return read.due ? "Due " + read.due : "No due date"; }
-function escapeHtml(text) {
-  return String(text).replace(/[&<>"']/g, c => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;"})[c]);
-}
-function makeMapLinks() {
-  const pending = reads.filter(r => !r.done).slice(0, 10);
-  const box = $("mapLinks");
-  if (!pending.length) { box.hidden = true; return; }
-  const destination = encodeURIComponent(pending[pending.length - 1].address);
-  const origin = encodeURIComponent(pending[0].address);
-  const waypoints = pending.slice(1, -1).map(r => encodeURIComponent(r.address)).join("%7C");
-  const google = "https://www.google.com/maps/dir/?api=1&origin=" + origin + "&destination=" + destination + "&travelmode=driving" + (waypoints ? "&waypoints=" + waypoints : "");
-  const apple = "https://maps.apple.com/?daddr=" + encodeURIComponent(pending[0].address) + "&dirflg=d";
-  $("googleLink").href = google;
-  $("appleLink").href = apple;
-  box.hidden = false;
-}
-function updateCurrent() {
-  const current = reads.find(r => !r.done);
-  $("currentAddress").textContent = current ? current.address : "No reads queued";
-  $("currentDue").textContent = current ? dueText(current) : "";
-  $("nextBtn").disabled = !current;
-  $("nextBtn").textContent = current ? "Clear this read · Next address" : "All reads complete";
-  makeMapLinks();
-}
-function render() {
-  const list = $("readList");
-  list.innerHTML = "";
-  reads.forEach((read, index) => {
-    const li = document.createElement("li");
-    li.className = "read" + (read.done ? " done" : "") + (!read.done && reads.find(r => !r.done)?.id === read.id ? " current" : "");
-    li.draggable = true;
-    li.dataset.id = read.id;
-    li.innerHTML = '<span class="read-number" aria-label="Read ' + (index + 1) + '">' + (read.done ? "✓" : index + 1) + '</span>' +
-      '<div class="read-fields"><input class="due-input" aria-label="Due date for read ' + (index + 1) + '" inputmode="numeric" placeholder="DD/MM" value="' + escapeHtml(read.due) + '">' +
-      '<input class="address-input" aria-label="Address for read ' + (index + 1) + '" value="' + escapeHtml(read.address) + '"></div>' +
-      '<div class="read-actions"><button type="button" class="up" aria-label="Move read up" ' + (index === 0 ? "disabled" : "") + '>↑</button>' +
-      '<button type="button" class="down" aria-label="Move read down" ' + (index === reads.length - 1 ? "disabled" : "") + '>↓</button>' +
-      '<button type="button" class="remove danger" aria-label="Remove read">×</button></div>';
-    li.querySelector(".due-input").addEventListener("change", e => { read.due = e.target.value.trim(); save(); render(); });
-    li.querySelector(".address-input").addEventListener("change", e => { read.address = e.target.value.trim(); save(); render(); });
-    li.querySelector(".up").addEventListener("click", () => move(index, index - 1));
-    li.querySelector(".down").addEventListener("click", () => move(index, index + 1));
-    li.querySelector(".remove").addEventListener("click", () => { reads.splice(index, 1); save(); render(); });
-    li.addEventListener("dragstart", e => { dragId = read.id; e.dataTransfer.effectAllowed = "move"; });
-    li.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
-    li.addEventListener("drop", e => {
-      e.preventDefault();
-      const from = reads.findIndex(r => r.id === dragId), to = reads.findIndex(r => r.id === read.id);
-      if (from >= 0 && to >= 0 && from !== to) move(from, to);
-    });
-    list.appendChild(li);
-  });
-  $("emptyMessage").hidden = reads.length > 0;
-  $("count").textContent = reads.length ? "(" + reads.filter(r => !r.done).length + " remaining / " + reads.length + " total)" : "";
-  updateCurrent();
-}
-function move(from, to) {
-  if (to < 0 || to >= reads.length) return;
-  const [item] = reads.splice(from, 1);
-  reads.splice(to, 0, item);
-  save(); render();
-}
-$("addBtn").addEventListener("click", () => {
-  const lines = $("bulkInput").value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-  const parsed = lines.map(parseLine);
-  const invalid = lines.filter((line, i) => !parsed[i]);
-  reads.push(...parsed.filter(Boolean));
-  $("bulkInput").value = "";
-  save(); render();
-  setStatus(invalid.length ? "Added " + (lines.length - invalid.length) + " read(s). Could not parse: " + invalid.join("; ") : "Added " + lines.length + " read(s).", invalid.length > 0);
-});
-$("clearBtn").addEventListener("click", () => {
-  if (!reads.length || confirm("Remove every read from the list?")) {
-    reads = []; save(); render(); setStatus("All reads cleared.");
-  }
-});
-$("nextBtn").addEventListener("click", () => {
-  const current = reads.find(r => !r.done);
-  if (!current) return;
-  current.done = true; save(); render();
-  setStatus("Read cleared. Next address is ready.");
-});
-$("centralAddress").addEventListener("change", save);
+  <script>
+    "use strict";
+    const STORAGE_KEY = "special_reader_v1";
+    const CENTRAL_KEY = "special_reader_central_address";
+    let reads = [];
+    let geocoder = null;
+    let mapsReady = false;
+    let dragId = null;
 
-function loadGoogleMaps(key) {
-  if (window.google?.maps) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    window.__specialMapsReady = resolve;
-    window.gm_authFailure = () => reject(new Error("Google rejected the API key. Check that Maps JavaScript API, Geocoding, and Directions are enabled and the key is allowed for this site."));
-    const script = document.createElement("script");
-    script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&loading=async&callback=__specialMapsReady";
-    script.onerror = () => reject(new Error("Could not load Google Maps. Check the API key and network."));
-    document.head.appendChild(script);
-  });
-}
-async function ensureMaps() {
-  if (mapsReady) return true;
-  let key = "";
-  try { key = localStorage.getItem("gmaps_key") || ""; } catch (e) {}
-  if (!key) {
-    $("apiPanel").classList.add("show");
-    key = $("apiKey").value.trim();
-  }
-  if (!key) {
-    setStatus("Enter a Google Maps API key to plan the driving order. You can still edit and work through the list.", true);
-    $("apiPanel").classList.add("show");
-    return false;
-  }
-  try {
-    await loadGoogleMaps(key);
-    geocoder = new google.maps.Geocoder();
-    directions = new google.maps.DirectionsService();
-    mapsReady = true;
-    try { localStorage.setItem("gmaps_key", key); } catch (e) {}
-    $("apiPanel").classList.remove("show");
-    return true;
-  } catch (e) { setStatus(e.message, true); $("apiPanel").classList.add("show"); return false; }
-}
-$("loadApiBtn").addEventListener("click", async () => {
-  const ready = await ensureMaps();
-  if (ready) setStatus("Google Maps services are ready. Select Plan drive order to optimize the route.");
-});
-function geocode(address) {
-  return new Promise((resolve, reject) => geocoder.geocode({ address, region: "au" }, (results, status) => {
-    if (status === "OK" && results?.[0]) {
-      const p = results[0].geometry.location;
-      resolve({ lat: p.lat(), lng: p.lng() });
-    } else reject(new Error("Could not locate “" + address + "” (" + status + ")."));
-  }));
-}
-function distance(a, b) {
-  const rad = Math.PI / 180, dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
-  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
-function routeOrder(items, origin, destination) {
-  return new Promise((resolve, reject) => {
-    const waypoints = items.slice(1, -1).map(x => ({ location: x.location, stopover: true }));
-    directions.route({ origin, destination, waypoints, optimizeWaypoints: true, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => {
-      if (status !== "OK") return reject(new Error("Directions request failed: " + status));
-      const order = result.routes[0].waypoint_order || [];
-      resolve([items[0], ...order.map(i => items[i + 1]), items[items.length - 1]]);
-    });
-  });
-}
-async function plan() {
-  const pending = reads.filter(r => !r.done);
-  if (pending.length < 2) { setStatus("Add at least two unfinished reads before planning.", true); return; }
-  const central = $("centralAddress").value.trim();
-  if (!central) { $("centralAddress").focus(); setStatus("Enter a central address first. It is saved in this browser.", true); return; }
-  const button = $("planBtn"); button.disabled = true;
-  try {
-    if (!await ensureMaps()) return;
-    setStatus("Locating central address and reads…");
-    const center = await geocode(central);
-    const located = [];
-    for (let i = 0; i < pending.length; i++) {
-      setStatus("Locating read " + (i + 1) + " of " + pending.length + "…");
-      located.push({ read: pending[i], location: await geocode(pending[i].address) });
+    function setStatus(msg, kind = "") {
+      const box = document.getElementById("status");
+      box.textContent = msg;
+      box.className = "status" + (kind ? " " + kind : "");
     }
-    // Due dates form two broad priority halves. Within each half Google optimizes
-    // driving order. The first stop is the read nearest the saved central address,
-    // ensuring one route endpoint is close to the preferred area.
-    const byDue = [...located].sort((a, b) => dueDate(a.read) - dueDate(b.read));
-    const split = Math.ceil(byDue.length / 2);
-    const halves = [byDue.slice(0, split), byDue.slice(split)].filter(group => group.length);
-    const ordered = [];
-    let previous = null;
-    for (let h = 0; h < halves.length; h++) {
-      let group = halves[h];
-      if (h === 0) {
-        let nearestIndex = 0;
-        for (let i = 1; i < group.length; i++) if (distance(group[i].location, center) < distance(group[nearestIndex].location, center)) nearestIndex = i;
-        const [nearest] = group.splice(nearestIndex, 1);
-        group.unshift(nearest);
-      }
-      if (!group.length) continue;
-      if (group.length === 1) { ordered.push(...group); previous = group[0]; continue; }
-      // Directions supports a limited number of intermediate stops. Keep the
-      // due-date halves intact and optimize each block, linking blocks in sequence.
-      let remaining = [...group];
-      while (remaining.length > 1) {
-        const take = Math.min(27, remaining.length);
-        let block = remaining.splice(0, take);
-        const start = previous || block[0];
-        if (previous) {
-          block = block.filter(x => x.read.id !== previous.read.id);
-          if (!block.length) break;
-          const destination = block[block.length - 1];
-          const routeItems = [start, ...block.slice(0, -1), destination];
-          const routed = await routeOrder(routeItems, start.location, destination.location);
-          const actual = routed.slice(1);
-          ordered.push(...actual);
-          previous = actual[actual.length - 1];
-        } else {
-          const destination = block[block.length - 1];
-          const routeItems = block.length > 2 ? block : block;
-          const routed = await routeOrder(routeItems, block[0].location, destination.location);
-          ordered.push(...routed);
-          previous = routed[routed.length - 1];
+
+    function uniqueId() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "read_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+    }
+
+    function loadSaved() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            reads = parsed.filter(Boolean).map(item => ({
+              id: item.id || uniqueId(),
+              due: String(item.due || ""),
+              address: String(item.address || "").trim(),
+              done: !!item.done
+            })).filter(r => r.address);
+          }
+        }
+      } catch (e) { reads = []; }
+
+      try {
+        document.getElementById("centralAddress").value = localStorage.getItem(CENTRAL_KEY) || "";
+      } catch (e) {}
+    }
+
+    function saveReads() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(reads)); } catch (e) {}
+      try { localStorage.setItem(CENTRAL_KEY, document.getElementById("centralAddress").value.trim()); } catch (e) {}
+    }
+
+    function parseDueDate(value) {
+      const text = (value || "").trim();
+      const match = text.match(/^(\d{1,2})\/(\d{1,2})$/);
+      if (!match) return null;
+      const day = Number(match[1]);
+      const month = Number(match[2]);
+      if (Number.isNaN(day) || Number.isNaN(month) || day < 1 || day > 31 || month < 1 || month > 12) return null;
+      return { day, month };
+    }
+
+    function parseReadLine(line) {
+      const s = (line || "").trim();
+      if (!s) return null;
+      const match = s.match(/^(\d{1,2})\/(\d{1,2})\s+(.+)$/);
+      if (!match) return null;
+      const due = match[1].padStart(2, "0") + "/" + match[2].padStart(2, "0");
+      const address = match[3].trim();
+      if (!address) return null;
+      return { id: uniqueId(), due, address, done: false };
+    }
+
+    function diffDaysFromToday(dueText) {
+      const dueObj = parseDueDate(dueText);
+      if (!dueObj) return Number.MAX_SAFE_INTEGER;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let year = today.getFullYear();
+      let date = new Date(year, dueObj.month - 1, dueObj.day);
+      if (date < today) date = new Date(year + 1, dueObj.month - 1, dueObj.day);
+      const ms = date.getTime() - today.getTime();
+      return Math.round(ms / 86400000);
+    }
+
+    function dueLabel(due) {
+      if (!due) return "No date";
+      const diff = diffDaysFromToday(due);
+      if (diff === 0) return "Due today";
+      if (diff === 1) return "Due tomorrow";
+      if (diff === 2) return "Due in 2 days";
+      return "Due " + due;
+    }
+
+    function isSameSuburb(a, b) {
+      const ta = toTokens(a); const tb = toTokens(b);
+      return ta.some(t => tb.includes(t));
+    }
+
+    function toTokens(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter(t => t.length > 2 && !["road","street","st","rd","ave","avenue","drive","dr","lane","ln","court","ct","close","cl","crescent","cres","place","pl","way","wynd","bvd","boulevard","parkway","pde","terrace","tce","highway","hwy","brunswick","coburg","merri","bek","vic","melbourne"].includes(t));
+    }
+
+    function commonTokenCount(a, b) {
+      const aa = toTokens(a);
+      const bb = toTokens(b);
+      const setB = new Set(bb);
+      return aa.filter(t => setB.has(t)).length;
+    }
+
+    function streetNumberFromAddress(addr) {
+      const m = String(addr).match(/^(?:\d+\s+|\d+[A-Za-z]?\s+)?(\d+)[A-Za-z]?/);
+      return m ? Number(m[1]) : 0;
+    }
+
+    function addressDistanceHeuristic(a, b) {
+      const sameSuburb = isSameSuburb(a, b) ? 0.1 : 1;
+      const tokens = commonTokenCount(a, b);
+      const numDiff = Math.abs(streetNumberFromAddress(a) - streetNumberFromAddress(b));
+      const base = 12 + numDiff * 0.35 + (tokens ? 0 : 5);
+      return base * sameSuburb;
+    }
+
+    function dueUrgency(read) {
+      const diff = diffDaysFromToday(read.due);
+      if (diff === 0) return 100;
+      if (diff === 1) return 80;
+      if (diff === 2) return 55;
+      if (diff < 7) return 28;
+      return 10;
+    }
+
+    function centralBias(address, central) {
+      const centralText = String(central || "");
+      if (!centralText.trim()) return 0;
+      const overlap = commonTokenCount(address, centralText);
+      const sameSuburb = isSameSuburb(address, centralText) ? 18 : 0;
+      return overlap * 10 + sameSuburb;
+    }
+
+    function candidateScore(currentAddress, candidateAddress, centralText) {
+      const base = addressDistanceHeuristic(currentAddress, candidateAddress);
+      const urgency = dueUrgency({ due: getDueTextFromAddress(candidateAddress) });
+      return base - urgency * 0.12 - centralBias(candidateAddress, centralText) * 0.4;
+    }
+
+    function getDueTextFromAddress(addr) {
+      const found = reads.find(r => r.address === addr && !r.done);
+      return found ? found.due : "";
+    }
+
+    function chooseNext(current, remaining, centralText) {
+      let best = remaining[0];
+      let bestScore = Number.POSITIVE_INFINITY;
+      for (const item of remaining) {
+        const score = candidateScore(current.address, item.address, centralText);
+        if (score < bestScore) {
+          bestScore = score;
+          best = item;
         }
       }
-      if (remaining.length === 1 && (!previous || remaining[0].read.id !== previous.read.id)) {
-        ordered.push(remaining[0]); previous = remaining[0];
+      return best;
+    }
+
+    function routeOrderByBlendedPriority(items, centralText) {
+      if (!items.length) return [];
+      const startCandidates = items.slice();
+      const routeOptions = [];
+
+      for (const start of startCandidates) {
+        const route = [start];
+        const remaining = items.filter(item => item.id !== start.id);
+        let current = start;
+        while (remaining.length) {
+          const next = chooseNext(current, remaining, centralText);
+          route.push(next);
+          const idx = remaining.findIndex(item => item.id === next.id);
+          if (idx >= 0) remaining.splice(idx, 1);
+          current = next;
+        }
+        const total = evaluateRoute(route, centralText);
+        routeOptions.push({ route, total });
+      }
+
+      routeOptions.sort((a, b) => a.total - b.total);
+      return routeOptions[0].route;
+    }
+
+    function evaluateRoute(route, centralText) {
+      if (!route.length) return Infinity;
+      let total = 0;
+      for (let i = 1; i < route.length; i++) {
+        total += addressDistanceHeuristic(route[i - 1].address, route[i].address) * 1.5;
+      }
+      const dueValue = route.reduce((sum, item) => sum + (dueUrgency(item) * 0.5), 0);
+      const centralPenalty = centralText ? Math.min(
+        route[0] ? centralBias(route[0].address, centralText) : 0,
+        route[route.length - 1] ? centralBias(route[route.length - 1].address, centralText) : 0
+      ) : 0;
+      return total + dueValue - centralPenalty;
+    }
+
+    function sortReadsForRoute() {
+      const pending = reads.filter(r => !r.done);
+      if (!pending.length) return [];
+      const centralText = document.getElementById("centralAddress").value.trim();
+      const ordered = routeOrderByBlendedPriority(pending, centralText);
+      return ordered;
+    }
+
+    function renderList() {
+      const list = document.getElementById("readList");
+      list.innerHTML = "";
+      const pending = reads.filter(r => !r.done);
+      const current = pending[0] || null;
+      const countEl = document.getElementById("count");
+      countEl.textContent = reads.length ? `(${pending.length} remaining / ${reads.length} total)` : "";
+      document.getElementById("emptyMessage").hidden = reads.length > 0;
+
+      if (!reads.length) {
+        document.getElementById("currentDue").textContent = "";
+        document.getElementById("currentAddress").textContent = "No reads queued";
+        document.getElementById("nextBtn").disabled = true;
+        document.getElementById("mapLinks").hidden = true;
+        return;
+      }
+
+      const activeReads = reads.filter(r => !r.done);
+      const firstActive = activeReads[0] || null;
+      document.getElementById("currentDue").textContent = firstActive ? dueLabel(firstActive.due) : "";
+      document.getElementById("currentAddress").textContent = firstActive ? firstActive.address : "No reads queued";
+      document.getElementById("nextBtn").disabled = !firstActive;
+
+      if (firstActive) {
+        const nextTen = reads.filter(r => !r.done).slice(0, 10);
+        const google = "https://www.google.com/maps/dir/?api=1" +
+          "&origin=" + encodeURIComponent(firstActive.address) +
+          "&destination=" + encodeURIComponent(nextTen[nextTen.length - 1].address) +
+          "&travelmode=driving" +
+          (nextTen.length > 2 ? "&waypoints=" + encodeURIComponent(nextTen.slice(1, -1).map(r => r.address).join("|")) : "");
+        const apple = "https://maps.apple.com/?daddr=" + encodeURIComponent(firstActive.address) + "&dirflg=d";
+        document.getElementById("googleMapsLink").href = google;
+        document.getElementById("appleMapsLink").href = apple;
+        document.getElementById("mapLinks").hidden = false;
+      } else {
+        document.getElementById("mapLinks").hidden = true;
+      }
+
+      reads.forEach((read, index) => {
+        const li = document.createElement("li");
+        li.className = "read" + (read.done ? " done" : "") + (firstActive && read.id === firstActive.id ? " current" : "");
+        li.draggable = true;
+        li.dataset.id = read.id;
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = read.done ? "✓" : index + 1;
+
+        const fields = document.createElement("div");
+        fields.className = "read-content";
+
+        const dueInput = document.createElement("input");
+        dueInput.type = "text";
+        dueInput.value = read.due;
+        dueInput.placeholder = "DD/MM";
+        dueInput.setAttribute("aria-label", "Due date for read " + index);
+        dueInput.addEventListener("change", () => {
+          read.due = dueInput.value.trim();
+          saveReads();
+          renderList();
+        });
+
+        const addressInput = document.createElement("input");
+        addressInput.type = "text";
+        addressInput.value = read.address;
+        addressInput.placeholder = "Street number and name, suburb";
+        addressInput.setAttribute("aria-label", "Address for read " + index);
+        addressInput.addEventListener("change", () => {
+          read.address = addressInput.value.trim();
+          saveReads();
+          renderList();
+        });
+
+        fields.appendChild(dueInput);
+        fields.appendChild(addressInput);
+
+        const actions = document.createElement("div");
+        actions.className = "read-actions";
+
+        const up = document.createElement("button");
+        up.type = "button";
+        up.textContent = "↑";
+        up.disabled = index === 0;
+        up.addEventListener("click", () => moveRead(index, index - 1));
+
+        const down = document.createElement("button");
+        down.type = "button";
+        down.textContent = "↓";
+        down.disabled = index === reads.length - 1;
+        down.addEventListener("click", () => moveRead(index, index + 1));
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "×";
+        remove.className = "danger";
+        remove.addEventListener("click", () => {
+          reads.splice(index, 1);
+          saveReads();
+          renderList();
+        });
+
+        actions.appendChild(up);
+        actions.appendChild(down);
+        actions.appendChild(remove);
+
+        li.appendChild(badge);
+        li.appendChild(fields);
+        li.appendChild(actions);
+
+        li.addEventListener("dragstart", (event) => {
+          dragId = read.id;
+          event.dataTransfer.effectAllowed = "move";
+        });
+
+        li.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        });
+
+        li.addEventListener("drop", (event) => {
+          event.preventDefault();
+          if (!dragId) return;
+          const fromIndex = reads.findIndex(r => r.id === dragId);
+          const toIndex = reads.findIndex(r => r.id === read.id);
+          if (fromIndex >= 0 && toIndex >= 0 && fromIndex !== toIndex) {
+            moveRead(fromIndex, toIndex);
+          }
+          dragId = null;
+        });
+
+        list.appendChild(li);
+      });
+    }
+
+    function moveRead(fromIndex, toIndex) {
+      if (toIndex < 0 || toIndex >= reads.length) return;
+      const [item] = reads.splice(fromIndex, 1);
+      reads.splice(toIndex, 0, item);
+      saveReads();
+      renderList();
+    }
+
+    function addFromInput() {
+      const text = document.getElementById("bulkInput").value;
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const added = [];
+      const failed = [];
+      for (const line of lines) {
+        const parsed = parseReadLine(line);
+        if (parsed) added.push(parsed);
+        else failed.push(line);
+      }
+      if (added.length) reads.push(...added);
+      document.getElementById("bulkInput").value = "";
+      saveReads();
+      renderList();
+      if (failed.length) {
+        setStatus(`Added ${added.length} read(s). Could not parse: ${failed.join("; ")}.`, "error");
+      } else {
+        setStatus(`Added ${added.length} read(s).`, "ok");
       }
     }
-    // Keep completed reads as history; replace only the unfinished portion.
-    const completed = reads.filter(r => r.done);
-    reads = [...completed, ...ordered.map(x => x.read)];
-    save(); render();
-    setStatus("Driving order planned. Earlier-due reads are prioritized in the first half; the first stop is nearest your central address. Review and adjust the order as needed.");
-  } catch (e) {
-    setStatus(e.message || "Could not plan this route.", true);
-  } finally { button.disabled = false; }
-}
-$("planBtn").addEventListener("click", plan);
-loadSaved();
-render();
-</script>
+
+    function clearAll() {
+      if (!reads.length) {
+        setStatus("Nothing to clear.");
+        return;
+      }
+      const ok = window.confirm("Remove all reads from this list?");
+      if (!ok) return;
+      reads = [];
+      saveReads();
+      renderList();
+      setStatus("All reads cleared.");
+    }
+
+    function clearCurrentAndAdvance() {
+      const firstActive = reads.find(r => !r.done);
+      if (!firstActive) return;
+      firstActive.done = true;
+      saveReads();
+      renderList();
+      setStatus("Current read cleared. Next address is ready.", "ok");
+    }
+
+    function geocodeAddress(address) {
+      return new Promise((resolve, reject) => {
+        if (!window.google || !google.maps || !geocoder) {
+          resolve({ lat: 0, lng: 0, fallback: true });
+          return;
+        }
+        geocoder.geocode({ address, region: "au" }, (results, status) => {
+          if (status === "OK" && results && results[0]) {
+            const loc = results[0].geometry.location;
+            resolve({ lat: loc.lat(), lng: loc.lng(), fallback: false });
+          } else {
+            resolve({ lat: 0, lng: 0, fallback: true });
+          }
+        });
+      });
+    }
+
+    function haversineKm(a, b) {
+      const toRad = deg => deg * Math.PI / 180;
+      const R = 6371;
+      const dLat = toRad(b.lat - a.lat);
+      const dLon = toRad(b.lng - a.lng);
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+      const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+      return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+
+    function inferFallbackLocation(address) {
+      const text = String(address || "").toLowerCase();
+      const tokens = text.match(/[a-z]+/g) || [];
+      const suburb = tokens.slice(-2).join(" ");
+      const mock = {
+        lat: 0,
+        lng: 0,
+        fallback: true
+      };
+      if (suburb.includes("brunswick")) {
+        mock.lat = -37.7675;
+        mock.lng = 144.9591;
+      } else if (suburb.includes("coburg") || suburb.includes("merri") || suburb.includes("bek")) {
+        mock.lat = -37.7425;
+        mock.lng = 144.9550;
+      } else if (suburb.includes("fitzroy")) {
+        mock.lat = -37.7987;
+        mock.lng = 144.9787;
+      } else if (suburb.includes("northcote")) {
+        mock.lat = -37.7719;
+        mock.lng = 144.9967;
+      } else if (suburb.includes("pascoe")) {
+        mock.lat = -37.7248;
+        mock.lng = 145.0228;
+      } else {
+        mock.lat = -37.81;
+        mock.lng = 144.96;
+      }
+      return mock;
+    }
+
+    async function buildRouteOrder() {
+      const pending = reads.filter(r => !r.done);
+      if (pending.length < 2) return pending;
+      const centralText = document.getElementById("centralAddress").value.trim();
+
+      let centralLocation = { lat: -37.77, lng: 144.96 };
+      if (centralText) {
+        const geocoded = await geocodeAddress(centralText);
+        if (!geocoded.fallback) centralLocation = geocoded;
+        else centralLocation = inferFallbackLocation(centralText);
+      }
+
+      const resolved = [];
+      for (const item of pending) {
+        const loc = await geocodeAddress(item.address);
+        resolved.push({
+          ...item,
+          loc: loc.fallback ? inferFallbackLocation(item.address) : loc
+        });
+      }
+
+      const routeCandidates = [];
+
+      for (const start of resolved) {
+        const route = [start];
+        const remaining = resolved.filter(item => item.id !== start.id);
+        let current = start;
+        while (remaining.length) {
+          let best = remaining[0];
+          let bestCost = Number.POSITIVE_INFINITY;
+          for (const item of remaining) {
+            const drive = haversineKm(current.loc, item.loc);
+            const urgencyWeight = dueUrgency(item) * 0.18;
+            const centralPenalty = haversineKm(item.loc, centralLocation) * 0.7;
+            const localClusterBonus = commonTokenCount(current.address, item.address) * 0.6;
+            const cost = drive + urgencyWeight + centralPenalty - localClusterBonus;
+            if (cost < bestCost) {
+              bestCost = cost;
+              best = item;
+            }
+          }
+          route.push(best);
+          const idx = remaining.findIndex(item => item.id === best.id);
+          if (idx >= 0) remaining.splice(idx, 1);
+          current = best;
+        }
+
+        const finalCost = route.reduce((sum, item, idx) => {
+          if (!idx) return sum;
+          const prev = route[idx - 1];
+          const drive = haversineKm(prev.loc, item.loc);
+          const urgency = dueUrgency(item) * 0.22;
+          const startNear = haversineKm(route[0].loc, centralLocation) * 0.45;
+          const endNear = haversineKm(route[route.length - 1].loc, centralLocation) * 0.45;
+          return sum + drive + urgency + Math.min(startNear, endNear);
+        }, 0);
+
+        routeCandidates.push({ route, finalCost });
+      }
+
+      routeCandidates.sort((a, b) => a.finalCost - b.finalCost);
+      return (routeCandidates[0]?.route || []).map(item => ({
+        id: item.id,
+        due: item.due,
+        address: item.address,
+        done: item.done
+      }));
+    }
+
+    async function planRoute() {
+      const pending = reads.filter(r => !r.done);
+      if (!pending.length) {
+        setStatus("Add at least one unfinished read.", "error");
+        return;
+      }
+      setStatus("Planning route…", "");
+
+      const ordered = await buildRouteOrder();
+      if (!ordered.length) {
+        setStatus("No route could be built.", "error");
+        return;
+      }
+
+      const hold = new Map();
+      for (const read of reads) hold.set(read.id, read);
+
+      const rebuilt = [];
+      const done = reads.filter(r => r.done);
+      for (const item of ordered) {
+        const read = hold.get(item.id);
+        if (read) rebuilt.push(read);
+      }
+
+      reads = [...done, ...rebuilt];
+      saveReads();
+      renderList();
+      setStatus("Route ordered with a due-date and drive-time blend. Adjust manually if needed.", "ok");
+    }
+
+    function initMapsApi() {
+      if (window.google && google.maps) { geocoder = new google.maps.Geocoder(); mapsReady = true; return; }
+      const savedKey = (() => { try { return localStorage.getItem("gmaps_key") || ""; } catch (e) { return ""; } })();
+      const key = document.getElementById("apiKey").value.trim() || savedKey;
+      if (!key) return;
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&loading=async&callback=__specialMapsReady";
+      script.async = true;
+      window.__specialMapsReady = () => {
+        geocoder = new google.maps.Geocoder();
+        mapsReady = true;
+        try { localStorage.setItem("gmaps_key", key); } catch (e) {}
+      };
+      script.onerror = () => setStatus("Google Maps could not load. Planning will still use the blended fallback algorithm.", "error");
+      document.head.appendChild(script);
+    }
+
+    document.getElementById("addBtn").addEventListener("click", addFromInput);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+    document.getElementById("nextBtn").addEventListener("click", clearCurrentAndAdvance);
+    document.getElementById("centralAddress").addEventListener("change", saveReads);
+    document.getElementById("planBtn").addEventListener("click", () => {
+      planRoute();
+    });
+    document.getElementById("loadApiBtn").addEventListener("click", () => {
+      initMapsApi();
+      setStatus("Google Maps loaded if the key was valid.", "ok");
+    });
+
+    loadSaved();
+    renderList();
+    initMapsApi();
+  </script>
 </body>
 </html>

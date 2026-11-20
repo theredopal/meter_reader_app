@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f8">
+  <title>Special Reader Guide</title>
+  <style>
+    :root { color-scheme: light; --bg:#f4f6f8; --panel:#fff; --ink:#1c2733; --muted:#5b6b7b; --accent:#0b6bcb; --line:#dde4ea; --urgent:#c62828; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px; background:var(--bg); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; line-height:1.6; }
+    main { width:min(100%,850px); margin:0 auto; padding:clamp(22px,5vw,44px); background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 36px rgb(28 39 51 / 8%); }
+    h1 { margin-top:0; line-height:1.2; }
+    h2 { margin-top:1.8em; line-height:1.3; }
+    .intro, .note { color:var(--muted); }
+    .steps { padding-left:1.5rem; }
+    .steps li { padding-left:.35rem; margin:.8rem 0; }
+    .urgent { color:var(--urgent); font-weight:700; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
+    .actions a { display:inline-block; padding:10px 15px; border:1px solid var(--line); border-radius:9px; color:var(--accent); font-weight:700; text-decoration:none; }
+    .actions a:hover, .actions a:focus-visible { border-color:var(--accent); outline:2px solid rgb(11 107 203 / 20%); }
+    .callout { padding:14px 16px; border-left:4px solid var(--accent); background:#f3f8ff; border-radius:6px; }
+    @media (max-width:520px) { body { padding:12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Special Reader: planning and day-of guide</h1>
+    <p class="intro">Use this checklist to turn the day's Bright Forms work into a reviewed route, then move through the reads while you are out.</p>
+
+    <h2>Before route planning</h2>
+    <ol class="steps">
+      <li><strong>Open Bright Forms and filter by date.</strong> Choose the date you are preparing for and verify that the displayed jobs belong to that date. Date filtering is done in Bright Forms; the Special Reader does not fetch or filter Bright Forms records.</li>
+      <li><strong>Copy the addresses from the filtered results.</strong> Include enough detail to locate each property (for example, street number, street, suburb/locality, and postcode where available). Resolve obvious duplicates or incomplete addresses before importing.</li>
+      <li><strong>Open Special Reader and add the work.</strong> Paste the address list into the <strong>Urgent reads</strong> or <strong>Normal reads</strong> box, one address per line, then add it. Use Urgent only for reads that should receive priority. The tool can also import CSV/TXT files.</li>
+    </ol>
+    <p class="callout"><strong>Important:</strong> Pasting addresses copies the address text only. It does not import meter values, customer records, or completion status from Bright Forms. Keep using the approved Bright Forms process for recording readings.</p>
+
+    <h2>Plan, sort, and review</h2>
+    <ol class="steps">
+      <li>Choose <strong>Auto-sort</strong> when you want a suggested ordering, then press <strong>Plan route</strong>. Address lookup needs a working internet connection and Google Maps configuration.</li>
+      <li>Wait for the location/route result. Check that the mapped markers correspond to the addresses you expect. Investigate any location lookup failures; ambiguous or misspelled addresses may resolve to the wrong place.</li>
+      <li>Review the order before leaving. Auto-sort is a geographic-distance heuristic that takes urgent priority into account; it is not a promise of the shortest driving time and does not account for live traffic, access restrictions, opening hours, or every real-world constraint.</li>
+      <li>Make any adjustments as needed: drag a read to reorder it, use row controls, or select multiple reads and use Bulk adjust to move, reprioritize, or reverse them. Use Undo if a change was accidental. Re-plan to refresh the route after making changes.</li>
+      <li>Confirm that the pending count and addresses match the work you intend to complete. Export a CSV backup if you want a portable copy.</li>
+    </ol>
+
+    <h2>Using it on the day</h2>
+    <ol class="steps">
+      <li>Open the same browser and device where you prepared the list. The worklist is saved locally in that browser; it does not automatically sync to another device.</li>
+      <li>Use the <strong>Current read</strong> panel to see the next unfinished address. Refer to the map and list as needed.</li>
+      <li>After completing a job and recording it in Bright Forms as required, press <strong>Clear this read · Next address</strong> in the reader to mark it done and advance to the next address.</li>
+      <li>If you accidentally clear a read, use the Undo control. If a job cannot be completed, leave it pending and adjust the order or priority as appropriate.</li>
+      <li>At the end, check the remaining count against your Bright Forms worklist. Export the list if you need a record or backup; do not treat this tool as the system of record for meter readings.</li>
+    </ol>
+
+    <h2>Useful reminders</h2>
+    <ul>
+      <li>Addresses without a valid located position may not appear in the map route.</li>
+      <li>Changes are saved in browser local storage. Clearing browser data can remove the saved list; export a backup when needed.</li>
+      <li>Use the landing page to return to the tools, or open the Special Reader directly.</li>
+    </ul>
+    <div class="actions">
+      <a href="./special_reader.html">Open Special Reader</a>
+      <a href="./index.html">Back to tools</a>
+    </div>
+  </main>
+</body>
+</html>
